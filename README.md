@@ -1,6 +1,6 @@
 # Sozialkunde – Prüfungstrainer
 
-280 Prüfungsfragen Sozialkunde zum Lernen, Üben und Prüfung simulieren. Nothing-Design.
+280 Prüfungsfragen Sozialkunde zum Lernen, Üben und Prüfung simulieren, mit Erklärung zu jeder Frage. Hell- und Dunkelmodus, Nothing-Design.
 
 - **Download-Seite:** https://geigerelias5-cpu.github.io/Sozialkunde/
 - **iPhone-Web-App:** https://geigerelias5-cpu.github.io/Sozialkunde/app/ – in Safari öffnen → Teilen → „Zum Home-Bildschirm“
