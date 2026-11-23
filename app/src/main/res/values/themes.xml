@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="screen">#F4F4F2</color>
+    <color name="red">#D71921</color>
+
+    <style name="AppTheme" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+        <item name="android:windowBackground">@color/screen</item>
+        <item name="android:statusBarColor">@color/screen</item>
+        <item name="android:navigationBarColor">@color/screen</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:colorAccent">@color/red</item>
+    </style>
+</resources>

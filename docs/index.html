@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sozialkunde – Prüfungstrainer</title>
+<meta name="description" content="Kostenloser Sozialkunde-Prüfungstrainer für Android und iPhone: 280 Fragen lernen, Prüfung simulieren, Fehler wiederholen.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="app/fonts.css">
+<style>
+/* VOICE: ruhig, knapp, wie ein Nothing-Produktblatt
+   IDEA: das Punktraster-Display; das App-Icon als großes Punktraster mit Haken
+   PICTURE: großes 7×7-Punktraster, der Haken leuchtet weiß, Spitze rot
+   COLOUR and TYPE: Schwarz, Weiß, Grau, ein rotes Signal; Doto für Zahlen und Titel, Hanken Grotesk für Text
+   LAYOUT: Titel + zwei Download-Knöpfe, Ring daneben; darunter Funktionen und Anleitung */
+:root{--bg:#000;--ink:#f2f2f2;--mut:#9a9a9a;--line:#ffffff1f;--card:#0e0e0e;--red:#d71921;color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:radial-gradient(circle at 1px 1px,#ffffff12 1px,transparent 1.4px) 0 0/16px 16px,var(--bg);color:var(--ink);font:16px/1.55 Hanken,"Hanken Grotesk",system-ui,sans-serif;overflow-x:clip}
+.dot{font-family:Doto,monospace;font-weight:900;letter-spacing:.02em}
+.wrap{max-width:1100px;margin:auto;padding:0 max(5vw,18px)}
+header{display:flex;justify-content:space-between;align-items:center;padding:22px 0}
+header .logo{display:flex;align-items:center;gap:10px;font-weight:700}
+header .logo img{width:30px;height:30px;border-radius:9px}
+header a{color:var(--mut);text-decoration:none;font-size:14px}
+.hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:40px;align-items:center;padding:36px 0 56px}
+h1{font-size:clamp(52px,9vw,104px);line-height:.95;margin:0 0 14px}
+.lead{font-size:19px;color:#cfcfcf;max-width:34ch;margin:0 0 28px}
+.btns{display:flex;flex-direction:column;gap:10px;max-width:420px}
+.btn{display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:20px;text-decoration:none;color:var(--ink);border:1px solid var(--line);background:var(--card);min-height:64px;transition:transform .15s,border-color .2s}
+.btn:hover{border-color:#ffffff55}.btn:active{transform:scale(.98)}
+.btn.pri{background:var(--red);border-color:var(--red);color:#fff}
+.btn svg{flex:none}
+.btn b{display:block;font-size:16px}.btn small{display:block;font-size:13px;opacity:.75}
+.note{font-size:13px;color:var(--mut);margin:12px 2px 0}
+.ring{position:relative;width:min(100%,400px);aspect-ratio:1;margin:auto}
+.ring svg{width:100%;height:100%;rotate:-90deg}
+.ring .mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring .mid b{font-size:clamp(34px,6vw,52px);line-height:1}
+.ring .mid small{color:var(--mut);font-size:15px;margin-top:6px}
+.arc{stroke-dasharray:0 252;transition:stroke-dasharray 1.4s cubic-bezier(.2,.9,.2,1),stroke-dashoffset 1.4s cubic-bezier(.2,.9,.2,1)}
+section{padding:44px 0;border-top:1px solid var(--line)}
+h2{font-size:clamp(28px,4vw,40px);line-height:1.05;margin:0 0 22px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:20px}
+.card .k{font-size:28px;line-height:1;margin-bottom:12px;color:var(--red)}
+.card>b{display:block;font-size:17px;margin-bottom:4px}
+.card p{margin:0;color:var(--mut);font-size:15px}
+.steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.steps ol{margin:0;padding-left:20px;color:#d6d6d6}
+.steps li{margin:6px 0}
+.steps h3{margin:0 0 10px;font-size:18px;display:flex;align-items:center;gap:10px}
+footer{border-top:1px solid var(--line);padding:26px 0 40px;color:var(--mut);font-size:14px;display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between}
+footer a{color:var(--mut)}
+@media(max-width:820px){.hero{grid-template-columns:1fr;padding-top:10px}.ring{width:min(78vw,340px);order:-1}.grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr}.btns{max-width:none}}
+@media(prefers-reduced-motion:reduce){.arc{transition:none}}
+.mx{display:grid;grid-template-columns:repeat(7,1fr);gap:clamp(10px,3vw,22px);width:min(100%,380px);margin:auto;aspect-ratio:1;place-items:center}
+.mx i{width:46%;aspect-ratio:1;border-radius:50%;background:#2a2a2a;transition:background .4s,transform .4s}
+.mx i.on{background:#f2f2f2;transform:scale(1.5)}.mx i.r{background:#d71921;transform:scale(1.7)}
+@media(max-width:820px){.mx{width:min(70vw,300px);order:-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="logo"><img src="icon-192.png" alt="">Sozialkunde</span>
+    <a href="https://github.com/geigerelias5-cpu/Sozialkunde">Quellcode auf GitHub</a>
+  </header>
+  <div class="hero">
+    <div>
+      <h1 class="dot">Sozial&shy;kunde</h1>
+      <p class="lead">280 Prüfungsfragen zum Lernen, Üben und Prüfung simulieren. Kostenlos, ohne Konto, ohne Werbung.</p>
+      <div class="btns">
+        <a class="btn pri" href="https://github.com/geigerelias5-cpu/Sozialkunde/releases/latest/download/Sozialkunde.apk">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+          <span><b>Für Android herunterladen</b><small>Sozialkunde.apk · Android 10 oder neuer</small></span></a>
+        <a class="btn" href="app/">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg>
+          <span><b>Auf dem iPhone öffnen</b><small>Web-App · in Safari „Zum Home-Bildschirm“</small></span></a>
+      </div>
+      <p class="note">Dein Lernfortschritt bleibt auf deinem Handy. Nichts wird hochgeladen.</p>
+    </div>
+    <div class="mx" id="mx" aria-hidden="true"></div>
+  </div>
+  <section>
+    <h2>Was die App kann</h2>
+    <div class="grid">
+      <div class="card"><div class="k dot">280</div><b>Alle Prüfungsfragen</b><p>Je fünf Antworten, die bei jedem Durchgang neu gemischt werden.</p></div>
+      <div class="card"><div class="k dot">20</div><b>Weiterlernen</b><p>Falsche und offene Fragen zuerst. Zweimal hintereinander richtig heißt „sicher“.</p></div>
+      <div class="card"><div class="k dot">30</div><b>Prüfung simulieren</b><p>30 zufällige Fragen ohne Lösung zwischendurch, am Ende eine Note.</p></div>
+      <div class="card"><div class="k dot">!</div><b>Fehler wiederholen</b><p>Alles, was du zuletzt falsch hattest, gezielt nochmal üben.</p></div>
+      <div class="card"><div class="k dot">14</div><b>Blöcke</b><p>Die Fragen in Blöcken zu je 20, mit Fortschritt pro Block und Einzelfragen.</p></div>
+      <div class="card"><div class="k dot">?</div><b>Suche &amp; Hinweise</b><p>Alle Lösungen durchsuchen. Veraltete Fragen sind mit einem Hinweis markiert.</p></div>
+    </div>
+  </section>
+  <section>
+    <h2>So installierst du sie</h2>
+    <div class="steps">
+      <div class="card"><h3>Android</h3>
+        <ol>
+          <li>Oben auf <b>„Für Android herunterladen“</b> tippen.</li>
+          <li>Die Datei <b>Sozialkunde.apk</b> öffnen.</li>
+          <li>Einmalig <b>„Unbekannte Apps installieren“</b> erlauben, dann <b>Installieren</b>.</li>
+          <li>Warnt Play Protect: <b>Trotzdem installieren</b>. Die App ist nicht im Play Store, deshalb die Meldung.</li>
+        </ol></div>
+      <div class="card"><h3>iPhone</h3>
+        <ol>
+          <li>Diese Seite in <b>Safari</b> öffnen und auf <b>„Auf dem iPhone öffnen“</b> tippen.</li>
+          <li>Unten auf das <b>Teilen-Symbol</b> tippen.</li>
+          <li><b>„Zum Home-Bildschirm“</b> → <b>Hinzufügen</b>.</li>
+          <li>Über das neue Symbol starten. Läuft im Vollbild und offline.</li>
+        </ol></div>
+    </div>
+  </section>
+  <footer>
+    <span>Sozialkunde Trainer · kostenlos und quelloffen</span>
+    <span>Keine Werbung, kein Konto, keine Datensammlung</span>
+  </footer>
+</div>
+<script>
+{
+  const ck=[[0,3],[1,4],[2,5],[3,4],[4,3],[5,2],[6,1]],mx=document.getElementById('mx');
+  mx.innerHTML=Array.from({length:49},(_, i)=>'<i></i>').join('');
+  const dots=mx.querySelectorAll('i');
+  const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  ck.forEach(([x,y],k)=>setTimeout(()=>dots[y*7+x].classList.add(k===6?'r':'on'),reduce?0:300+k*140));
+}
+</script>
+</body>
+</html>

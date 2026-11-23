@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'de.sozialkunde.trainer'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'de.sozialkunde.trainer'
+        minSdk 29
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        // Schlüsseldatei liegt im Projekt, das Passwort NUR als GitHub-Secret „SK_KEY_PASSWORD“.
+        // So kann niemand mit dem öffentlichen Code gefälschte Updates signieren.
+        sozialkunde {
+            storeFile file('sozialkunde-release.p12')
+            storePassword System.getenv('SK_KEY_PASSWORD') ?: ''
+            keyAlias 'sozialkunde'
+            keyPassword System.getenv('SK_KEY_PASSWORD') ?: ''
+        }
+    }
+
+    gradle.taskGraph.whenReady { graph ->
+        if (graph.allTasks.any { it.name.toLowerCase().contains('release') } && !System.getenv('SK_KEY_PASSWORD')) {
+            throw new GradleException('Das Secret SK_KEY_PASSWORD fehlt (GitHub: Settings → Secrets and variables → Actions).')
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.sozialkunde
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
