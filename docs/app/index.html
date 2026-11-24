@@ -216,8 +216,11 @@ const canListen=NA?(()=>{try{return NA.canListen()}catch(e){return false}})():!!
 let vToken=0,cbn=0,rec=null;const scb={},lcb={};
 window.__voice={
   done:id=>{const f=scb[id];delete scb[id];f&&f()},
-  result:(id,json)=>{const f=lcb[id];delete lcb[id];let r=null;try{r=JSON.parse(json)}catch(e){}f&&f(r)},
-  error:(id,code)=>{const f=lcb[id];delete lcb[id];f&&f(code==='denied'?'denied':null)},
+  result:(id,json)=>{const f=lcb[id];delete lcb[id];let r=[];try{r=JSON.parse(json)}catch(e){}f&&f({alts:r})},
+  // Zwischenergebnis: sobald ein Buchstabe eindeutig ist, sofort nehmen
+  partial:(id,json)=>{const f=lcb[id];if(!f)return;let r=[];try{r=JSON.parse(json)}catch(e){}
+    const p=parse(r,curTexts(),true);if(typeof p==='number'||p==='stop'||p==='repeat'){delete lcb[id];try{NA.cancelListen()}catch(e){}f({alts:r,hit:p})}},
+  error:(id,code)=>{const f=lcb[id];delete lcb[id];f&&f({err:code})},
   pause:()=>stopVoice()
 };
 let deV=null;const pickVoice=()=>{if(NA||!('speechSynthesis' in window))return;const v=speechSynthesis.getVoices().filter(x=>/^de/i.test(x.lang));deV=v.find(x=>x.localService&&/anna|petra|helena|markus|yannick/i.test(x.name))||v.find(x=>x.localService)||v[0]||null};
@@ -231,31 +234,66 @@ function speak(text,wait=0){return new Promise(res=>{
   let d=false;const fin=()=>{if(!d){d=true;res()}};u.onend=fin;u.onerror=fin;
   setTimeout(fin,2500+wait+est(text));speechSynthesis.speak(u);
 })}
+// listen() liefert {alts:[...]} oder {err:'nomatch'|'busy'|'denied'|'net'|'other'}
 function listen(){return new Promise(res=>{
-  if(NA){const id='l'+(++cbn);lcb[id]=res;try{NA.listen(id)}catch(e){delete lcb[id];res(null)}return}
-  if(!SR)return res(null);
-  const r=new SR();rec=r;r.lang='de-DE';r.maxAlternatives=5;r.interimResults=false;r.continuous=false;
-  let got=null;r.onresult=e=>{got=[...e.results[0]].map(a=>a.transcript)};
-  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed')got='denied'};
-  r.onend=()=>{if(rec===r)rec=null;res(got)};
-  try{r.start()}catch(e){rec=null;res(null)}
+  if(NA){const id='l'+(++cbn);lcb[id]=res;try{NA.listen(id)}catch(e){delete lcb[id];res({err:'other'})}return}
+  if(!SR)return res({err:'other'});
+  const r=new SR();rec=r;r.lang='de-DE';r.maxAlternatives=5;r.interimResults=true;r.continuous=false;
+  let out=null;const fin=v=>{if(out)return;out=v;try{r.abort()}catch(e){}};
+  r.onresult=e=>{const res0=e.results[e.results.length-1],alts=[...res0].map(a=>a.transcript);
+    if(res0.isFinal){fin({alts});return}
+    const p=parse(alts,curTexts(),true);if(typeof p==='number'||p==='stop'||p==='repeat')fin({alts,hit:p})};
+  r.onerror=e=>{const m={'no-speech':'nomatch','not-allowed':'denied','service-not-allowed':'denied','network':'net','aborted':'other'};if(!out)out={err:m[e.error]||'other'}};
+  r.onend=()=>{if(rec===r)rec=null;res(out||{err:'nomatch'})};
+  try{r.start()}catch(e){rec=null;res({err:'busy'})}
 })}
 function stopVoice(){vToken++;
   try{if(NA)NA.stop();else if('speechSynthesis' in window)speechSynthesis.cancel()}catch(e){}
   if(rec){try{rec.abort()}catch(e){}rec=null}
-  for(const k in lcb){const f=lcb[k];delete lcb[k];f(null)}
+  for(const k in lcb){const f=lcb[k];delete lcb[k];f({err:'other'})}
   for(const k in scb){const f=scb[k];delete scb[k];f()}
   setVState('')}
-const LET=[['a','ah','aa','ar','eins','erste','erstens','1'],['b','be','bee','beh','zwei','zweite','2'],['c','ce','cee','zeh','tse','ze','see','drei','dritte','3'],['d','de','dee','deh','vier','vierte','4'],['e','ee','eh','fünf','fünfte','5']];
-function parse(alts){
-  for(const s of alts||[]){const w=String(s).toLowerCase().replace(/[^a-zäöüß0-9 ]/g,' ').split(/\s+/).filter(Boolean);if(!w.length)continue;
-    if(w.some(x=>/^(stopp?|ende|beenden|aufhören)$/.test(x)))return'stop';
-    if(w.some(x=>/^(wiederholen|wiederhole|nochmal|nochmals|wiederholung)$/.test(x)))return'repeat';
-    if(w.some(x=>/^(weiter|nächste|überspringen)$/.test(x)))return'skip';
-    for(let k=w.length-1;k>=0;k--){const i=LET.findIndex(l=>l.includes(w[k]));if(i>=0)return i}}
+// ---- Erkennung von A–E ----
+// sicher: überall im Satz; lose: nur bei kurzen Äußerungen (1–2 Wörter) oder nach „Antwort“/„Buchstabe“
+const SURE=[
+ ['a','anton','alpha','alfa','adam','eins','erste','erstens','1'],
+ ['b','berta','bertha','bravo','bruno','zwei','zweite','zweitens','2'],
+ ['c','cäsar','caesar','zäsar','charlie','charly','drei','dritte','drittens','3'],
+ ['d','dora','delta','david','vier','vierte','viertens','4'],
+ ['e','emil','echo','erich','fünf','fünfte','fünftens','5']];
+const LOOSE=[
+ ['ah','aa','aah','ahh','ha','haa','ar','är','aha','one'],
+ ['be','bee','beh','bé','bäh','bä','pe','peh','p','pee','bei','two'],
+ ['ce','cee','zeh','tse','ze','zee','see','seh','sie','z','zett','tsee','three','tree'],
+ ['de','dee','deh','day','te','tee','t','teh','the','die','four','für'],
+ ['ee','eh','he','ehe','äh','ehh','i','e.','five','er']];
+const STOPW=new Set('der die das und oder ein eine einer eines dem den des mit von zu zum zur auf für bei nach aus ist sind wird werden nicht nur auch als wie im in an am es sie er man sich durch über unter'.split(' '));
+const norm=s=>String(s).toLowerCase().replace(/[„“"'.,!?;:()\-–]/g,' ').replace(/\s+/g,' ').trim();
+const words=s=>norm(s).split(' ').filter(Boolean);
+function curTexts(){if(!run||run.done)return[];const q=Q[run.list[run.pos]];return[...app.querySelectorAll('.a')].map(b=>q.a[+b.dataset.j])}
+function letterOf(w,loose){let i=SURE.findIndex(l=>l.includes(w));if(i<0&&loose)i=LOOSE.findIndex(l=>l.includes(w));return i}
+// Antworttext wiedererkennen: wer den Inhalt sagt statt des Buchstabens
+function byContent(text,opts){const said=new Set(words(text).filter(w=>w.length>3&&!STOPW.has(w)));if(!said.size)return null;
+  const sc=opts.map(o=>{const ws=[...new Set(words(o).filter(w=>w.length>3&&!STOPW.has(w)))];if(!ws.length)return 0;
+    const hit=ws.reduce((n,w)=>n+(said.has(w)?1:[...said].some(s=>s.length>5&&w.length>5&&(s.startsWith(w.slice(0,6))||w.startsWith(s.slice(0,6))))?.5:0),0);return hit/Math.min(ws.length,4)});
+  const best=Math.max(...sc),bi=sc.indexOf(best);
+  return best>=.5&&sc.filter(x=>x>=best-.01).length===1?bi:null}
+function parse(alts,opts,partial){
+  alts=(alts||[]).map(String).filter(s=>s.trim());
+  for(const s of alts){const w=words(s);
+    if(w.some(x=>/^(stopp?|ende|beenden|aufhören|abbrechen)$/.test(x)))return'stop';
+    if(w.some(x=>/^(wiederholen|wiederhole|nochmal|nochmals|wiederholung|nochmal)$/.test(x)))return'repeat';
+    if(!partial&&w.some(x=>/^(weiter|nächste|überspringen)$/.test(x)))return'skip'}
+  // 1) eindeutige Buchstaben/Wörter, letzte Nennung zählt („nicht A, sondern C“)
+  for(const s of alts){const w=words(s),short=w.length<=2;
+    for(let k=w.length-1;k>=0;k--){const after=k>0&&/^(antwort|buchstabe|buchstaben|nummer|lösung)$/.test(w[k-1]);
+      const i=letterOf(w[k],short||after);if(i>=0)return i}}
+  if(partial)return null;
+  // 2) Inhalt der Antwort
+  for(const s of alts){const i=byContent(s,opts||[]);if(i!==null)return i}
   return null}
-function setVState(s){const el=document.getElementById('vst');if(!el)return;el.className='vst '+s;
-  el.innerHTML=s==='listen'?'<i></i>Hört zu – sag A, B, C, D oder E':s==='speak'?'<i></i>Liest vor …':''}
+function setVState(s,heard){const el=document.getElementById('vst');if(!el)return;el.className='vst '+s;
+  el.innerHTML=s==='listen'?'<i></i>Hört zu – sag A, B, C, D oder E':s==='speak'?'<i></i>Liest vor …':s==='heard'?'<i></i>Gehört: „'+esc(heard)+'“':''}
 function updVBtn(){const b=document.getElementById('mic');if(b){b.classList.toggle('on',vs.on);b.setAttribute('aria-pressed',vs.on)}}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function voiceAsk(){
@@ -269,17 +307,28 @@ async function voiceAsk(){
   for(let k=0;k<btns.length;k++){btns[k].classList.add('rd');await ps[k+1];btns[k].classList.remove('rd');if(!live())return}
   voiceListen(my,0);
 }
+// Zuhören: Stille/Zeitüberschreitung wird leise wiederholt; nur bei echtem Unverständnis kommt eine Rückfrage
 async function voiceListen(my,tries){
   if(!canListen){setVState('');return}
-  setVState('listen');const r=await listen();
-  if(my!==vToken||!vs.on||!run||run.done)return;setVState('');
-  if(r==='denied'){vs.on=false;vsave();updVBtn();toast('Mikrofon nicht erlaubt');return}
-  const p=parse(r),btns=[...app.querySelectorAll('.a')];
-  if(typeof p==='number'&&btns[p]){answer(+btns[p].dataset.j);return}
-  if(p==='repeat'){voiceAsk();return}
-  if(p==='stop'){vs.on=false;vsave();updVBtn();stopVoice();toast('Sprachmodus aus');return}
-  if(tries<1){setVState('speak');await speak('Nicht verstanden. Sag A, B, C, D oder E.');if(my!==vToken)return;voiceListen(my,tries+1)}
-  else{setVState('');toast('Nicht verstanden – tippe aufs Mikrofon')}
+  let quiet=0,miss=0,busy=0;
+  while(true){
+    await sleep(NA?120:250);if(my!==vToken||!vs.on||!run||run.done)return;
+    setVState('listen');const r=await listen();
+    if(my!==vToken||!vs.on||!run||run.done)return;
+    if(r.err==='denied'){vs.on=false;vsave();updVBtn();setVState('');toast('Mikrofon nicht erlaubt');return}
+    if(r.err==='busy'||r.err==='other'){if(++busy>3){setVState('');toast('Spracheingabe gestört – tippe aufs Mikrofon');return}await sleep(400);continue}
+    if(r.err==='net'){setVState('');toast('Spracheingabe braucht Internet');return}
+    if(r.err==='nomatch'){if(++quiet>=4){setVState('');toast('Nichts gehört – tippe aufs Mikrofon');return}continue}
+    const p=r.hit!==undefined?r.hit:parse(r.alts,curTexts(),false),btns=[...app.querySelectorAll('.a')];
+    if(typeof p==='number'&&btns[p]){answer(+btns[p].dataset.j);return}
+    if(p==='repeat'){voiceAsk();return}
+    if(p==='skip'){go(1);return}
+    if(p==='stop'){vs.on=false;vsave();updVBtn();stopVoice();toast('Sprachmodus aus');return}
+    const heard=(r.alts&&r.alts[0])||'';
+    if(++miss>=3){setVState('heard',heard);toast('Nicht verstanden – tippe aufs Mikrofon');return}
+    setVState('heard',heard);await sleep(700);if(my!==vToken)return;
+    setVState('speak');await speak(miss===1?'Nicht verstanden. Sag zum Beispiel: Antwort B.':'Sag A, B, C, D oder E.');if(my!==vToken)return;
+  }
 }
 async function voiceFeedback(q,ok,last,next){
   const my=++vToken,btns=[...app.querySelectorAll('.a')],ci=btns.findIndex(b=>isRight(q,+b.dataset.j));
@@ -291,6 +340,9 @@ async function voiceFeedback(q,ok,last,next){
 }
 function toggleVoice(){
   if(!canSpeak){toast('Sprachausgabe wird hier nicht unterstützt');return}
+  // Sprachmodus an, aber gerade still (z. B. nach „Nichts gehört“): Antippen hört erneut zu statt auszuschalten
+  const el=document.getElementById('vst');
+  if(vs.on&&run&&!run.done&&canListen&&el&&!/listen|speak/.test(el.className)){voiceListen(++vToken,0);return}
   vs.on=!vs.on;vsave();updVBtn();
   if(vs.on){if(!canListen)toast('Nur Vorlesen – Spracheingabe geht hier nicht');if(run&&!run.done)voiceAsk()}
   else stopVoice();

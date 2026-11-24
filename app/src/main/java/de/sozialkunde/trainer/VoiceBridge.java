@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
@@ -17,6 +18,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
 
 /**
@@ -98,8 +100,10 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
     }
 
     private void startListening(String id) {
-        if (!SpeechRecognizer.isRecognitionAvailable(act)) { call("error", id, "unavailable"); return; }
-        if (recognizer == null) recognizer = SpeechRecognizer.createSpeechRecognizer(act);
+        if (!SpeechRecognizer.isRecognitionAvailable(act)) { call("error", id, "other"); return; }
+        // Jedes Mal ein frischer Erkenner: verhindert „beschäftigt“-Fehler beim schnellen Neustart
+        if (recognizer != null) { recognizer.destroy(); recognizer = null; }
+        recognizer = SpeechRecognizer.createSpeechRecognizer(act);
         activeListen = id;
         recognizer.setRecognitionListener(new RecognitionListener() {
             private boolean finished = false;
@@ -113,24 +117,57 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
                 ArrayList<String> r = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 finish("result", r == null ? "[]" : new JSONArray(r).toString());
             }
+            @Override public void onPartialResults(Bundle b) {
+                if (finished) return;
+                ArrayList<String> r = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (r != null && !r.isEmpty()) call("partial", id, new JSONArray(r).toString());
+            }
             @Override public void onError(int error) {
-                finish("error", error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ? "denied" : "e" + error);
+                String code;
+                switch (error) {
+                    case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
+                    case SpeechRecognizer.ERROR_NO_MATCH: code = "nomatch"; break;
+                    case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
+                    case SpeechRecognizer.ERROR_CLIENT: code = "busy"; break;
+                    case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS: code = "denied"; break;
+                    case SpeechRecognizer.ERROR_NETWORK:
+                    case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
+                    case SpeechRecognizer.ERROR_SERVER: code = "net"; break;
+                    default: code = "other";
+                }
+                finish("error", code);
             }
             @Override public void onReadyForSpeech(Bundle p) { }
             @Override public void onBeginningOfSpeech() { }
             @Override public void onRmsChanged(float v) { }
             @Override public void onBufferReceived(byte[] b) { }
             @Override public void onEndOfSpeech() { }
-            @Override public void onPartialResults(Bundle b) { }
             @Override public void onEvent(int t, Bundle p) { }
         });
         Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "de-DE");
+        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "de-DE");
         i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
-        i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
-        i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 900L);
+        i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, act.getPackageName());
+        if (Build.VERSION.SDK_INT >= 33) {
+            // Hinweis an die Erkennung: diese kurzen Wörter sind zu erwarten
+            ArrayList<String> bias = new ArrayList<>(Arrays.asList(
+                    "A", "B", "C", "D", "E", "Antwort A", "Antwort B", "Antwort C", "Antwort D", "Antwort E",
+                    "Anton", "Berta", "Cäsar", "Dora", "Emil", "Stopp", "Wiederholen", "Weiter"));
+            i.putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, bias);
+        }
         recognizer.startListening(i);
+    }
+
+    /** Zuhören abbrechen (z. B. weil ein Zwischenergebnis schon eindeutig war), Vorlesen läuft weiter. */
+    @JavascriptInterface
+    public void cancelListen() {
+        act.runOnUiThread(() -> {
+            activeListen = null;
+            if (recognizer != null) recognizer.cancel();
+        });
     }
 
     /** Ruft window.__voice.<fn>(id[, arg]) im WebView auf. */
