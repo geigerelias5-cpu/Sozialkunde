@@ -20,7 +20,7 @@ jobs:
           curl -sL -o m.zip https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip
           unzip -q m.zip && ls vosk-model-small-de-0.15 vosk-model-small-de-0.15/graph
       - name: Messen
-        run: python3 lab/asr_lab2.py vosk-model-small-de-0.15 lab/cases.json results.json
+        run: python3 lab/vocab_lab.py vosk-model-small-de-0.15 lab/allwords.json results.json
       - name: Ergebnis sichern
         if: always()
         run: |
