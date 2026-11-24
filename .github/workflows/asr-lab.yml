@@ -1,0 +1,33 @@
+name: ASR-Labor
+on:
+  push:
+    branches: [asr-lab]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Werkzeuge
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq espeak-ng libttspico-utils sox unzip >/dev/null
+          pip install -q vosk
+      - name: Modell laden
+        run: |
+          curl -sL -o m.zip https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip
+          unzip -q m.zip && ls vosk-model-small-de-0.15 vosk-model-small-de-0.15/graph
+      - name: Messen
+        run: python3 lab/asr_lab.py vosk-model-small-de-0.15 results.json
+      - name: Ergebnis sichern
+        if: always()
+        run: |
+          cp results.json /tmp/result.json 2>/dev/null || echo '{"fehler":"kein Ergebnis"}' > /tmp/result.json
+          git config user.name lab; git config user.email lab@users.noreply.github.com
+          git checkout --orphan asr-results
+          git rm -rfq . >/dev/null
+          cp /tmp/result.json result.json
+          git add result.json && git commit -qm "Laborergebnis ${{ github.run_number }}"
+          git push -f origin asr-results
