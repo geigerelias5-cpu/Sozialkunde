@@ -117,6 +117,9 @@ h3{font-size:14px;color:var(--mut);font-weight:500;margin:22px 4px 8px}
 .setx{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:12px 2px;min-height:64px;flex-wrap:wrap}
 .setx small{display:block;color:var(--mut);font-size:13px}
 .vhint{font-size:13px;color:var(--mut);margin:-4px 2px 8px}
+.a.pick{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}.a.pick .k{background:var(--ink);color:var(--bg)}
+.swh{text-align:center;color:var(--mut);font-size:13px;margin:16px 0 0}
+#app{touch-action:pan-y}
 @keyframes up{from{opacity:0;transform:translateY(12px)}}
 .enter>*{animation:up .45s cubic-bezier(.2,.9,.2,1) both}.enter>*:nth-child(2){animation-delay:.04s}.enter>*:nth-child(3){animation-delay:.08s}.enter>*:nth-child(n+4){animation-delay:.12s}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -143,9 +146,13 @@ const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(M
 const all=()=>[...Array(N).keys()];
 const ARR='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>';
 const CHEV='<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>';
+const MIC='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
 let run=null,openB=-1;
 function setBot(h){bot.hidden=!h;botin.innerHTML=h||''}
-function show(html){stopVoice();app.innerHTML=html;app.classList.remove('enter');void app.offsetWidth;app.classList.add('enter');scrollTo(0,0)}
+const calm=matchMedia('(prefers-reduced-motion: reduce)');
+function show(html,dir){stopVoice();app.style.transform='';app.innerHTML=html;app.classList.remove('enter');scrollTo(0,0);
+  if(dir){if(!calm.matches&&app.animate)app.animate([{transform:`translateX(${dir*48}px)`,opacity:0},{transform:'none',opacity:1}],{duration:260,easing:'cubic-bezier(.2,.9,.2,1)'});return}
+  void app.offsetWidth;app.classList.add('enter')}
 function home(keep){
   run=null;setBot('');
   const c={k:0,w:0,s:0};all().forEach(i=>{const s=status(i);if(s)c[s]++});
@@ -288,36 +295,69 @@ function toggleVoice(){
   if(vs.on){if(!canListen)toast('Nur Vorlesen – Spracheingabe geht hier nicht');if(run&&!run.done)voiceAsk()}
   else stopVoice();
 }
+// ---------- Wischen und Pfeiltasten im Quiz ----------
+const inQuiz=()=>run&&document.getElementById('vst')&&!ov.classList.contains('on');
+let sx=null,sy=0,t0=0,lock=null,dxl=0;
+document.addEventListener('touchstart',e=>{sx=null;if(!inQuiz()||e.touches.length>1)return;const p=e.touches[0];
+  if(p.clientX<18||p.clientX>innerWidth-18)return;sx=p.clientX;sy=p.clientY;t0=Date.now();lock=null;dxl=0},{passive:true});
+document.addEventListener('touchmove',e=>{if(sx===null)return;const p=e.touches[0],dx=p.clientX-sx,dy=p.clientY-sy;
+  if(lock===null&&(Math.abs(dx)>10||Math.abs(dy)>10))lock=Math.abs(dx)>Math.abs(dy)*1.3?'x':'y';
+  if(lock==='x'){dxl=dx;app.style.transform=`translateX(${dx*.35}px)`}},{passive:true});
+const endSwipe=()=>{if(sx===null)return;const dx=dxl,fast=Date.now()-t0<260;sx=null;
+  if(lock!=='x')return;
+  if(Math.abs(dx)>70||(fast&&Math.abs(dx)>35)){if(!swiped){swiped=true;try{localStorage.setItem('sk-swiped','1')}catch(e){}}go(dx<0?1:-1)}
+  else if(app.animate){app.animate([{transform:app.style.transform},{transform:'none'}],{duration:200,easing:'ease-out'});app.style.transform=''}
+  else app.style.transform=''};
+document.addEventListener('touchend',endSwipe,{passive:true});document.addEventListener('touchcancel',endSwipe,{passive:true});
+document.addEventListener('keydown',e=>{if(!inQuiz()||e.target.tagName==='INPUT')return;
+  if(e.key==='ArrowRight'){go(1);e.preventDefault()}else if(e.key==='ArrowLeft'){go(-1);e.preventDefault()}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopVoice()});
-function start(list,label){run={list,label,pos:0,right:0,exam:label==='Prüfung'};ask()}
-function ask(){
-  const i=run.list[run.pos],q=Q[i],order=shuffle(q.a.map((t,j)=>j));run.done=false;
-  show(`<div class="top"><button class="ib" id="back" aria-label="Zurück">${ARR}</button><span class="cap">${run.label}</span><span class="tr2"><span class="cnt">${run.pos+1}/${run.list.length}</span>${canSpeak?`<button class="ib mic ${vs.on?'on':''}" id="mic" aria-label="Sprachmodus" aria-pressed="${vs.on}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}</span></div>
-  <div class="pbar">${run.list.length<=40?run.list.map((x,k)=>`<i class="${k<run.pos?'d':k===run.pos?'c':''}"></i>`).join(''):`<i class="d" style="flex:${run.pos}"></i><i style="flex:${run.list.length-run.pos}"></i>`}</div>
+function start(list,label){run={list,label,pos:0,exam:label==='Prüfung',ord:[],ans:[]};ask()}
+// Blättern: d=+1 nächste Frage, d=-1 vorherige
+function go(d){if(!run)return;const p=run.pos+d;
+  if(p<0){bump(1);return}
+  if(p>=run.list.length){result();return}
+  run.pos=p;ask(d)}
+function bump(d){if(!calm.matches&&app.animate)app.animate([{transform:'none'},{transform:`translateX(${d*22}px)`},{transform:'none'}],{duration:280,easing:'ease-out'})}
+let swiped=false;try{swiped=!!localStorage.getItem('sk-swiped')}catch(e){}
+function ask(dir){
+  const i=run.list[run.pos],q=Q[i],order=run.ord[run.pos]||(run.ord[run.pos]=shuffle(q.a.map((t,j)=>j)));
+  const prev=run.ans[run.pos];run.done=prev!==undefined;
+  show(`<div class="top"><button class="ib" id="back" aria-label="Zurück">${ARR}</button><span class="cap">${run.label}</span><span class="tr2"><span class="cnt">${run.pos+1}/${run.list.length}</span>${canSpeak?`<button class="ib mic ${vs.on?'on':''}" id="mic" aria-label="Sprachmodus" aria-pressed="${vs.on}">${MIC}</button>`:''}</span></div>
+  <div class="pbar">${run.list.length<=40?run.list.map((x,k)=>`<i class="${k===run.pos?'c':run.ans[k]!==undefined?'d':''}"></i>`).join(''):`<i class="d" style="flex:${run.pos}"></i><i style="flex:${run.list.length-run.pos}"></i>`}</div>
   <div class="qn">Frage ${i+1}</div><div class="q">${esc(q.q)}</div><div class="vst" id="vst"></div>
-  <div class="ans">${order.map((j,k)=>`<button class="a" data-j="${j}"><span class="k">${'ABCDE'[k]}</span><span>${esc(q.a[j])}</span></button>`).join('')}</div><div id="fb"></div>`);
+  <div class="ans">${order.map((j,k)=>`<button class="a" data-j="${j}"><span class="k">${'ABCDE'[k]}</span><span>${esc(q.a[j])}</span></button>`).join('')}</div><div id="fb"></div>
+  ${swiped?'':'<p class="swh">‹ Wischen zum Blättern ›</p>'}`,dir);
   document.getElementById('back').onclick=()=>home();
   app.querySelectorAll('.a').forEach(b=>b.onclick=()=>answer(+b.dataset.j));
   const m=document.getElementById('mic');if(m)m.onclick=toggleVoice;
   setBot('');
-  if(vs.on)voiceAsk();
+  if(run.done)paint(prev,false);else if(vs.on)voiceAsk();
 }
 const isRight=(q,j)=>j===q.c||q.a[j]===q.a[q.c];
 function answer(j){
-  if(run.done)return;run.done=true;stopVoice();
+  if(run.done)return;run.done=true;run.ans[run.pos]=j;stopVoice();
   const i=run.list[run.pos],q=Q[i],ok=isRight(q,j);
-  const x=st[i]||{r:0,w:0,s:0};if(ok){x.r++;x.s++}else{x.w++;x.s=0}st[i]=x;save();if(ok)run.right++;
-  const last=run.pos===run.list.length-1,next=()=>{if(last)result();else{run.pos++;ask()}};
-  if(run.exam){next();return}
-  app.querySelectorAll('.a').forEach(b=>{const k=+b.dataset.j;b.disabled=true;if(isRight(q,k))b.classList.add('ok');else if(k===j)b.classList.add('bad');else b.classList.add('dim')});
-  document.getElementById('fb').innerHTML=`<div class="note ${ok?'ok':''}"><b>${ok?'Richtig':'Falsch'}</b>${ok?'':`<p class="rt">Richtig ist: ${esc(q.a[q.c])}</p>`}<p>${esc(q.e)}</p></div>`+(q.n?`<div class="note"><b>Hinweis</b>${esc(q.n)}</div>`:'');
+  const x=st[i]||{r:0,w:0,s:0};if(ok){x.r++;x.s++}else{x.w++;x.s=0}st[i]=x;save();
+  if(run.exam){go(1);return}
+  paint(j,true);
+}
+// Beantwortete Frage anzeigen (fresh=true direkt nach dem Antworten, false beim Zurückblättern)
+function paint(j,fresh){
+  const i=run.list[run.pos],q=Q[i],ok=isRight(q,j),last=run.pos===run.list.length-1,next=()=>go(1);
+  app.querySelectorAll('.a').forEach(b=>{const k=+b.dataset.j;b.disabled=true;
+    if(run.exam){b.classList.add(k===j?'pick':'dim');return}
+    if(isRight(q,k))b.classList.add('ok');else if(k===j)b.classList.add('bad');else b.classList.add('dim')});
+  if(!run.exam)document.getElementById('fb').innerHTML=`<div class="note ${ok?'ok':''}"><b>${ok?'Richtig':'Falsch'}</b>${ok?'':`<p class="rt">Richtig ist: ${esc(q.a[q.c])}</p>`}<p>${esc(q.e)}</p></div>`+(q.n?`<div class="note"><b>Hinweis</b>${esc(q.n)}</div>`:'');
+  else document.getElementById('fb').innerHTML='<p class="swh">Deine Antwort. Die Auswertung kommt am Ende.</p>';
   setBot(`<button class="pri" id="next">${last?'Ergebnis':'Weiter'}</button>`);
   document.getElementById('next').onclick=()=>{stopVoice();next()};
-  if(vs.on&&canSpeak)voiceFeedback(q,ok,last,next);
+  if(fresh&&vs.on&&canSpeak)voiceFeedback(q,ok,last,next);
 }
 const grade=p=>p>=.92?'1':p>=.81?'2':p>=.67?'3':p>=.5?'4':p>=.3?'5':'6';
 const item=i=>{const q=Q[i];return`<li class="ri"><div class="qn">Frage ${i+1}</div><div>${esc(q.q)}</div><div class="aa">${esc(q.a[q.c])}</div><div class="ee">${esc(q.e)}</div>${q.n?`<div class="nn">Hinweis: ${esc(q.n)}</div>`:''}</li>`};
 function result(){
+  run.right=run.ans.reduce((s,j,k)=>s+(j!==undefined&&isRight(Q[run.list[k]],j)?1:0),0);
   const n=run.list.length,p=run.right/n,wrong=run.list.filter(i=>st[i]&&st[i].s===0),again=run.list.slice(),label=run.label;
   show(`<div class="top"><button class="ib" id="back" aria-label="Zurück">${ARR}</button><span class="cap">${label}</span><span></span></div>
   <div class="res">${run.exam?`<p>Note</p><div class="big dot">${grade(p)}</div>`:`<div class="big dot">${run.right}<span>/${n}</span></div>`}<p>${run.right} von ${n} richtig · ${Math.round(p*100)} %</p></div>
