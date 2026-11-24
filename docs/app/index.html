@@ -17,7 +17,7 @@
    PICTURE: große Doto-Zahl „sicher / 280“ mit Punktleiste, darunter Blöcke als Liste
    COLOUR and TYPE: Schwarz/Weiß, Grautöne, ein rotes Signal #d71921; Doto für Zahlen, Hanken Grotesk für Text
    LAYOUT: eine Spalte, Handy zuerst, nur große Listenzeilen und Pill-Buttons */
-:root{color-scheme:light dark;--bg:light-dark(#f4f4f2,#050505);--ink:light-dark(#111,#f2f2f2);--mut:light-dark(#6b6b6b,#9a9a9a);--card:light-dark(#fff,#151515);--card2:light-dark(#ececea,#1e1e1e);--line:light-dark(#dcdcd8,#2a2a2a);--red:#d71921}
+:root{color-scheme:light dark;--bg:light-dark(#f4f4f2,#050505);--ink:light-dark(#111,#f2f2f2);--mut:light-dark(#6b6b6b,#9a9a9a);--card:light-dark(#fff,#151515);--card2:light-dark(#ececea,#1e1e1e);--line:light-dark(#dcdcd8,#2a2a2a);--red:#d71921;--green:light-dark(#12923f,#2fc463)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}body{overscroll-behavior-y:none}
@@ -65,8 +65,8 @@ h3{font-size:14px;color:var(--mut);font-weight:500;margin:22px 4px 8px}
 .ans{display:grid;gap:8px}
 .a{width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:14px 16px;min-height:60px;cursor:pointer;display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:center;font-size:16px;line-height:1.35}
 .a .k{width:28px;height:28px;border-radius:50%;background:var(--card2);display:grid;place-items:center;font-family:Doto,monospace;font-weight:900;font-size:15px}
-.a.ok{border-color:var(--ink);background:var(--ink);color:var(--bg)}.a.ok .k{background:var(--bg);color:var(--ink)}
-.a.bad{border-color:var(--red);color:var(--red)}.a.bad .k{background:var(--red);color:#fff}
+.a.ok{border-color:var(--green);background:var(--green);color:#fff;font-weight:600}.a.ok .k{background:#fff;color:var(--green)}
+.a.bad{border-color:var(--red);background:var(--red);color:#fff}.a.bad .k{background:#fff;color:var(--red)}
 .a.dim{opacity:.4}
 .note{margin-top:14px;padding:14px 16px;border:1px solid var(--line);border-radius:22px;background:var(--card);font-size:15px}
 .note b{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--red);margin-bottom:4px}.note b::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--red)}
@@ -120,6 +120,28 @@ h3{font-size:14px;color:var(--mut);font-weight:500;margin:22px 4px 8px}
 .a.pick{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}.a.pick .k{background:var(--ink);color:var(--bg)}
 .swh{text-align:center;color:var(--mut);font-size:13px;margin:16px 0 0}
 #app{touch-action:pan-y}
+.ov .pan{max-height:88vh;overflow-y:auto;overscroll-behavior:contain}
+.sech{font-size:13px;color:var(--mut);margin:16px 2px 6px;font-weight:500}
+.btn2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.btn3{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.btn3 .sbtn{flex:1 1 140px}
+.sbtn{min-height:52px;border:1px solid var(--line);border-radius:99px;background:var(--card2);font-weight:500;font-size:15px;cursor:pointer;padding:0 14px}
+.sbtn.pri2{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.box{border:1px solid var(--line);border-radius:22px;padding:16px}.box b{display:block;font-size:17px}.box p{margin:4px 0 0;color:var(--mut);font-size:14px}
+.code{width:100%;margin-top:10px;border:1px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink);font:13px/1.4 ui-monospace,Menlo,monospace;padding:10px 12px;resize:vertical;word-break:break-all}
+.lnk2{border:0;background:none;color:var(--mut);text-decoration:underline;font-size:14px;min-height:44px;padding:0 4px;margin-top:4px;cursor:pointer}
+/* Ergebnis-Streifen hinter der ganzen Seite: grün = richtig, rot = falsch */
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0;transition:opacity .35s}
+body.mood-ok::before{opacity:1;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--green) 22%,transparent) 0 18px,transparent 18px 36px)}
+body.mood-bad::before{opacity:1;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--red) 22%,transparent) 0 18px,transparent 18px 36px)}
+body{position:relative;isolation:isolate}
+.note.ok{border-color:var(--green);border-width:2px}.note.ok b{color:var(--green);font-size:15px}.note.ok b::before{background:var(--green)}
+.note.bad{border-color:var(--red);border-width:2px}.note.bad b{font-size:15px}
+.verdict{display:flex;align-items:center;gap:10px;border-radius:22px;padding:12px 16px;margin-top:14px;color:#fff;font-weight:700;font-size:18px}
+.verdict.ok{background:var(--green)}.verdict.bad{background:var(--red)}
+.verdict svg{flex:none}
+body.mood-ok .bot .pri{background:var(--green)}
+@keyframes pop{0%{transform:scale(.92);opacity:0}60%{transform:scale(1.03)}100%{transform:none;opacity:1}}
+.verdict{animation:pop .35s cubic-bezier(.2,.9,.2,1) both}
 @keyframes up{from{opacity:0;transform:translateY(12px)}}
 .enter>*{animation:up .45s cubic-bezier(.2,.9,.2,1) both}.enter>*:nth-child(2){animation-delay:.04s}.enter>*:nth-child(3){animation-delay:.08s}.enter>*:nth-child(n+4){animation-delay:.12s}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -150,7 +172,7 @@ const MIC='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="c
 let run=null,openB=-1;
 function setBot(h){bot.hidden=!h;botin.innerHTML=h||''}
 const calm=matchMedia('(prefers-reduced-motion: reduce)');
-function show(html,dir){stopVoice();app.style.transform='';app.innerHTML=html;app.classList.remove('enter');scrollTo(0,0);
+function show(html,dir){stopVoice();document.body.classList.remove('mood-ok','mood-bad');app.style.transform='';app.innerHTML=html;app.classList.remove('enter');scrollTo(0,0);
   if(dir){if(!calm.matches&&app.animate)app.animate([{transform:`translateX(${dir*48}px)`,opacity:0},{transform:'none',opacity:1}],{duration:260,easing:'cubic-bezier(.2,.9,.2,1)'});return}
   void app.offsetWidth;app.classList.add('enter')}
 function home(keep){
@@ -184,15 +206,52 @@ let toastT;function toast(m){toastEl.textContent=m;toastEl.classList.add('on');c
 function openSettings(){drawSettings(0);ov.classList.add('on');ov.setAttribute('aria-hidden','false')}
 function closeSettings(){ov.classList.remove('on');ov.setAttribute('aria-hidden','true')}
 document.getElementById('ovdim').onclick=closeSettings;
+// ---------- Fortschritt exportieren / importieren ----------
+let pend=null;
+const today=()=>new Date().toISOString().slice(0,10);
+function exportJSON(){return JSON.stringify({app:'sozialkunde-trainer',v:1,date:today(),questions:N,progress:st,voice:{rate:vs.rate,expl:vs.expl}})}
+function exportCode(){return 'SK1:'+btoa(unescape(encodeURIComponent(exportJSON())))}
+function readImport(text){text=String(text||'').trim();if(!text)return null;
+  try{if(/^SK1:/i.test(text))text=decodeURIComponent(escape(atob(text.slice(4).replace(/\s+/g,''))));
+    const d=JSON.parse(text);if(!d||d.app!=='sozialkunde-trainer'||typeof d.progress!=='object')return null;
+    const clean={};for(const [k,x] of Object.entries(d.progress)){const i=+k;if(Number.isInteger(i)&&i>=0&&i<N&&x&&typeof x==='object')clean[i]={r:+x.r||0,w:+x.w||0,s:+x.s||0}}
+    return{st:clean,date:d.date?new Date(d.date).toLocaleDateString('de-DE'):'',vs:d.voice}}catch(e){return null}}
+function takeImport(text){const d=readImport(text);if(!d){toast('Das ist keine gültige Sicherung');return}pend=d;drawSettings('imc')}
+window.__importText=takeImport;
+window.__skToast=m=>toast(m); // Android liefert die gewählte Datei hierhin
+const canFile=()=>!!window.AndroidApp||!!(navigator.canShare&&window.File&&(()=>{try{return navigator.canShare({files:[new File(['x'],'a.json',{type:'application/json'})]})}catch(e){return false}})())||!NA;
+const canShareTxt=()=>!!window.AndroidApp||!!navigator.share;
+async function copyText(s){
+  if(window.AndroidApp){window.AndroidApp.copy(s);toast('Code kopiert');return}
+  try{await navigator.clipboard.writeText(s);toast('Code kopiert');return}catch(e){}
+  const ta=document.getElementById('excode');if(ta){ta.focus();ta.select();try{document.execCommand('copy');toast('Code kopiert');return}catch(e){}}
+  toast('Code markiert – bitte selbst kopieren')}
+async function shareText(s){if(window.AndroidApp){window.AndroidApp.shareText(s);return}
+  try{await navigator.share({title:'Sozialkunde-Fortschritt',text:s})}catch(e){}}
+async function saveFile(name,s){
+  if(window.AndroidApp){window.AndroidApp.saveFile(name,s);return}
+  const f=new File([s],name,{type:'application/json'});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Sozialkunde-Fortschritt'});return}}catch(e){if(e&&e.name==='AbortError')return}
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('Datei gespeichert')}catch(e){toast('Speichern nicht möglich – nimm „Code kopieren“')}}
 function drawSettings(step){
   const seen=Object.keys(st).length;
   pan.innerHTML=`<div class="grab"></div><h2>Einstellungen<button class="ib" id="cls" aria-label="Schließen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
   <button class="set" id="thm" role="switch" aria-checked="${isDark()}"><span><b>Dunkelmodus</b><small>${theme?'Eigene Wahl':'Folgt gerade dem Handy'}</small></span><span class="sw"></span></button>
-  <button class="set" id="vtg" role="switch" aria-checked="${vs.on}"><span><b>Sprachmodus</b><small>Frage und Antworten vorlesen, mit A bis E antworten</small></span><span class="sw"></span></button>
+  <button class="set" id="vtg" role="switch" aria-checked="${vs.on}"><span><b>Sprachmodus</b><small>Vorlesen, dann Buchstabe oder Antwort sagen</small></span><span class="sw"></span></button>
   ${canSpeak?'':'<p class="vhint">Sprachausgabe wird auf diesem Gerät nicht unterstützt.</p>'}${canSpeak&&!canListen?'<p class="vhint">Spracheingabe wird hier nicht unterstützt, nur Vorlesen.</p>':''}
   <div class="setx"><span><b>Vorlesetempo</b></span><span class="seg" id="seg">${RATES.map(([r,l])=>`<button data-r="${r}" aria-pressed="${vs.rate===r}">${l}</button>`).join('')}</span></div>
   <button class="set" id="vex" role="switch" aria-checked="${vs.expl}"><span><b>Erklärung vorlesen</b><small>Nach jeder Antwort auch das „Warum“ vorlesen</small></span><span class="sw"></span></button>
-  ${step===0?`<button class="set warn" id="rst"><span>Gesamten Fortschritt löschen<small>${seen} von ${N} Fragen haben einen Lernstand</small></span></button>`:''}
+  <div class="sech">Fortschritt sichern</div>
+  ${step==='ex'?`<div class="box"><b>Exportieren</b><p>${seen} Fragen mit Lernstand. Speichere die Datei oder den Code, um den Fortschritt auf einem anderen Handy oder nach einer Neuinstallation zu übernehmen.</p>
+     <div class="btn3">${canFile()?'<button class="sbtn" id="exf">Als Datei speichern</button>':''}${canShareTxt()?'<button class="sbtn" id="exs">Teilen</button>':''}<button class="sbtn" id="exc">Code kopieren</button></div>
+     <textarea class="code" id="excode" readonly rows="3">${esc(exportCode())}</textarea><button class="lnk2" id="exx">Schließen</button></div>`
+   :step==='im'?`<div class="box"><b>Importieren</b><p>Wähle eine exportierte Datei oder füge den Code ein.</p>
+     <div class="btn3"><button class="sbtn" id="imf">Datei wählen</button></div><input type="file" id="imfile" accept=".json,.txt,application/json,text/plain" hidden>
+     <textarea class="code" id="imcode" rows="3" placeholder="Code hier einfügen …"></textarea><div class="btn3"><button class="sbtn pri2" id="imgo">Code importieren</button></div><button class="lnk2" id="imx">Abbrechen</button></div>`
+   :step==='imc'?`<div class="conf"><b>Fortschritt ersetzen?</b><p>Dein aktueller Stand (${seen} Fragen) wird durch den importierten (${Object.keys(pend.st).length} Fragen${pend.date?', gesichert am '+esc(pend.date):''}) ersetzt.</p><div class="in"><button class="del" id="imy">Ja, importieren</button><button class="no" id="imn">Abbrechen</button></div></div>`
+   :`<div class="btn2"><button class="sbtn" id="ex">Exportieren</button><button class="sbtn" id="im">Importieren</button></div>`}
+  <div class="sech">Zurücksetzen</div>
+  ${step===0||step==='ex'||step==='im'||step==='imc'?`<button class="set warn" id="rst"><span>Gesamten Fortschritt löschen<small>${seen} von ${N} Fragen haben einen Lernstand</small></span></button>`:''}
   ${step===1?`<div class="conf"><b>Wirklich alles löschen?</b><p>Alle ${seen} geübten Fragen werden auf „offen“ zurückgesetzt.</p><div class="in"><button class="del" id="y1">Ja, weiter</button><button class="no" id="n1">Abbrechen</button></div></div>`:''}
   ${step===2?`<div class="conf"><b>Letzte Abfrage</b><p>Das kann nicht rückgängig gemacht werden. Dein gesamter Lernfortschritt ist danach weg.</p><div class="in"><button class="del" id="y2">Endgültig löschen</button><button class="no" id="n2">Abbrechen</button></div></div>`:''}`;
   document.getElementById('cls').onclick=closeSettings;
@@ -203,6 +262,14 @@ function drawSettings(step){
   pan.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{vs.rate=+b.dataset.r;vsave();drawSettings(step);if('speechSynthesis' in window&&!NA){try{speechSynthesis.cancel()}catch(e){}}speak('So schnell lese ich vor.')});
   on('rst',()=>drawSettings(1));on('y1',()=>drawSettings(2));on('n1',()=>drawSettings(0));on('n2',()=>drawSettings(0));
   on('y2',()=>{st={};save();openB=-1;closeSettings();home();toast('Fortschritt gelöscht')});
+  on('ex',()=>drawSettings('ex'));on('exx',()=>drawSettings(0));on('im',()=>drawSettings('im'));on('imx',()=>drawSettings(0));on('imn',()=>{pend=null;drawSettings(0)});
+  on('exc',()=>copyText(exportCode()));
+  on('exs',()=>shareText(exportCode()));
+  on('exf',()=>saveFile('sozialkunde-fortschritt-'+today()+'.json',exportJSON()));
+  on('imf',()=>{if(window.AndroidApp)window.AndroidApp.pickFile();else document.getElementById('imfile').click()});
+  const fi=document.getElementById('imfile');if(fi)fi.onchange=()=>{const f=fi.files&&fi.files[0];if(!f)return;const r=new FileReader();r.onload=()=>takeImport(String(r.result));r.readAsText(f)};
+  on('imgo',()=>takeImport(document.getElementById('imcode').value));
+  on('imy',()=>{st=pend.st;save();if(pend.vs){Object.assign(vs,pend.vs);vs.on=false;vsave()}pend=null;openB=-1;closeSettings();home();toast('Fortschritt importiert')});
 }
 // ---------- Sprachmodus: Vorlesen + mit A–E antworten ----------
 const VKEY='sk-voice';let vs={on:false,rate:1.6,expl:false};
@@ -213,13 +280,13 @@ const vsave=()=>{try{localStorage.setItem(VKEY,JSON.stringify(vs))}catch(e){}};
 const NA=window.AndroidVoice||null, SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const canSpeak=!!NA||('speechSynthesis' in window);
 const canListen=NA?(()=>{try{return NA.canListen()}catch(e){return false}})():!!SR;
-let vToken=0,cbn=0,rec=null;const scb={},lcb={};
+let vToken=0,cbn=0,rec=null,voicePick=-1;const scb={},lcb={};
 window.__voice={
   done:id=>{const f=scb[id];delete scb[id];f&&f()},
   result:(id,json)=>{const f=lcb[id];delete lcb[id];let r=[];try{r=JSON.parse(json)}catch(e){}f&&f({alts:r})},
-  // Zwischenergebnis: sobald ein Buchstabe eindeutig ist, sofort nehmen
-  partial:(id,json)=>{const f=lcb[id];if(!f)return;let r=[];try{r=JSON.parse(json)}catch(e){}
-    const p=parse(r,curTexts(),true);if(typeof p==='number'||p==='stop'||p==='repeat'){delete lcb[id];try{NA.cancelListen()}catch(e){}f({alts:r,hit:p})}},
+  // Zwischenergebnisse nur anzeigen – entschieden wird erst, wenn du fertig gesprochen hast
+  partial:(id,json)=>{if(!lcb[id])return;let r=[];try{r=JSON.parse(json)}catch(e){}if(r[0])setVState('live',r[0])},
+  ready:id=>{if(lcb[id])setVState('listen')},
   error:(id,code)=>{const f=lcb[id];delete lcb[id];f&&f({err:code})},
   pause:()=>stopVoice()
 };
@@ -265,9 +332,10 @@ function listen(){return new Promise(res=>{
   if(!SR)return res({err:'other'});
   const r=new SR();rec=r;r.lang='de-DE';r.maxAlternatives=5;r.interimResults=true;r.continuous=false;
   let out=null;const fin=v=>{if(out)return;out=v;try{r.abort()}catch(e){}};
+  r.onaudiostart=()=>setVState('listen');
   r.onresult=e=>{const res0=e.results[e.results.length-1],alts=[...res0].map(a=>a.transcript);
     if(res0.isFinal){fin({alts});return}
-    const p=parse(alts,curTexts(),true);if(typeof p==='number'||p==='stop'||p==='repeat')fin({alts,hit:p})};
+    if(alts[0])setVState('live',alts[0])};
   r.onerror=e=>{const m={'no-speech':'nomatch','not-allowed':'denied','service-not-allowed':'denied','network':'net','aborted':'other'};if(!out)out={err:m[e.error]||'other'}};
   r.onend=()=>{if(rec===r)rec=null;res(out||{err:'nomatch'})};
   try{r.start()}catch(e){rec=null;res({err:'busy'})}
@@ -278,47 +346,65 @@ function stopVoice(){vToken++;
   for(const k in lcb){const f=lcb[k];delete lcb[k];f({err:'other'})}
   for(const k in scb){const f=scb[k];delete scb[k];f()}
   setVState('')}
-// ---- Erkennung von A–E ----
-// sicher: überall im Satz; lose: nur bei kurzen Äußerungen (1–2 Wörter) oder nach „Antwort“/„Buchstabe“
-const SURE=[
- ['a','anton','alpha','alfa','adam','eins','erste','erstens','1'],
- ['b','berta','bertha','bravo','bruno','zwei','zweite','zweitens','2'],
- ['c','cäsar','caesar','zäsar','charlie','charly','drei','dritte','drittens','3'],
- ['d','dora','delta','david','vier','vierte','viertens','4'],
- ['e','emil','echo','erich','fünf','fünfte','fünftens','5']];
+// ---- Erkennung: Buchstabe (A–E) ODER die Antwort selbst ----
+const SURE=[['anton','alpha','alfa','adam'],['berta','bertha','bravo','bruno'],['cäsar','caesar','zäsar','charlie','charly'],['dora','delta','david'],['emil','echo','erich']];
+const NUMS=[['eins','erste','erstens','ersten'],['zwei','zweite','zweitens','zweiten'],['drei','dritte','drittens','dritten'],['vier','vierte','viertens','vierten'],['fünf','fünfte','fünftens','fünften']];
 const LOOSE=[
- ['ah','aa','aah','ahh','ha','haa','ar','är','aha','one'],
- ['be','bee','beh','bé','bäh','bä','pe','peh','p','pee','bei','two'],
- ['ce','cee','zeh','tse','ze','zee','see','seh','sie','z','zett','tsee','three','tree'],
- ['de','dee','deh','day','te','tee','t','teh','the','die','four','für'],
- ['ee','eh','he','ehe','äh','ehh','i','e.','five','er']];
-const STOPW=new Set('der die das und oder ein eine einer eines dem den des mit von zu zum zur auf für bei nach aus ist sind wird werden nicht nur auch als wie im in an am es sie er man sich durch über unter'.split(' '));
-const norm=s=>String(s).toLowerCase().replace(/[„“"'.,!?;:()\-–]/g,' ').replace(/\s+/g,' ').trim();
+ ['a','ah','aa','aah','ahh','ha','haa','ar','är','aha','1','one'],
+ ['b','be','bee','beh','bé','bäh','bä','pe','peh','p','pee','bei','2','two'],
+ ['c','ce','cee','zeh','tse','ze','zee','see','seh','sie','z','zett','tsee','3','three'],
+ ['d','de','dee','deh','day','te','tee','t','teh','the','die','4','four'],
+ ['e','ee','eh','he','ehe','äh','ehh','i','5','five','er']];
+const FILL=new Set('ähm äh hm hmm also ich nehme nimm glaube denke sage sag würde sagen wähle ist es mal okay ok bitte vielleicht dann das wäre meine genau'.split(' '));
+const STOPW=new Set('der die das und oder ein eine einer eines einem einen dem den des mit von zu zum zur auf für bei nach aus ist sind wird werden wurde nicht nur auch als wie im in an am es sie er man sich durch über unter vor bis so dass was wer wo sein seine ihre ihr alle allen jeder jede kein keine mehr sehr hat haben kann können muss müssen darf soll'.split(' '));
+const NUMW={null:0,eins:1,ein:1,eine:1,zwei:2,drei:3,vier:4,fünf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,zwölf:12,dreizehn:13,vierzehn:14,fünfzehn:15,sechzehn:16,siebzehn:17,achtzehn:18,neunzehn:19,zwanzig:20,einundzwanzig:21,vierundzwanzig:24,dreißig:30,vierzig:40,fünfzig:50,sechzig:60,siebzig:70,achtzig:80,neunzig:90,hundert:100,tausend:1000};
+const norm=s=>String(s).toLowerCase().replace(/(\d)\.(?=\d{3})/g,'$1').replace(/,-/g,'').replace(/[„“"'.,!?;:()\/+\-–€%]/g,' ').replace(/\s+/g,' ').trim();
 const words=s=>norm(s).split(' ').filter(Boolean);
+const content=s=>[...new Set(words(s).map(w=>NUMW[w]!==undefined&&!['ein','eine'].includes(w)?String(NUMW[w]):w).filter(w=>(/^\d+$/.test(w)||w.length>=2)&&!STOPW.has(w)&&!FILL.has(w)))];
 function curTexts(){if(!run||run.done)return[];const q=Q[run.list[run.pos]];return[...app.querySelectorAll('.a')].map(b=>q.a[+b.dataset.j])}
-function letterOf(w,loose){let i=SURE.findIndex(l=>l.includes(w));if(i<0&&loose)i=LOOSE.findIndex(l=>l.includes(w));return i}
-// Antworttext wiedererkennen: wer den Inhalt sagt statt des Buchstabens
-function byContent(text,opts){const said=new Set(words(text).filter(w=>w.length>3&&!STOPW.has(w)));if(!said.size)return null;
-  const sc=opts.map(o=>{const ws=[...new Set(words(o).filter(w=>w.length>3&&!STOPW.has(w)))];if(!ws.length)return 0;
-    const hit=ws.reduce((n,w)=>n+(said.has(w)?1:[...said].some(s=>s.length>5&&w.length>5&&(s.startsWith(w.slice(0,6))||w.startsWith(s.slice(0,6))))?.5:0),0);return hit/Math.min(ws.length,4)});
-  const best=Math.max(...sc),bi=sc.indexOf(best);
-  return best>=.5&&sc.filter(x=>x>=best-.01).length===1?bi:null}
-function parse(alts,opts,partial){
-  alts=(alts||[]).map(String).filter(s=>s.trim());
-  for(const s of alts){const w=words(s);
-    if(w.some(x=>/^(stopp?|ende|beenden|aufhören|abbrechen)$/.test(x)))return'stop';
-    if(w.some(x=>/^(wiederholen|wiederhole|nochmal|nochmals|wiederholung|nochmal)$/.test(x)))return'repeat';
-    if(!partial&&w.some(x=>/^(weiter|nächste|überspringen)$/.test(x)))return'skip'}
-  // 1) eindeutige Buchstaben/Wörter, letzte Nennung zählt („nicht A, sondern C“)
-  for(const s of alts){const w=words(s),short=w.length<=2;
-    for(let k=w.length-1;k>=0;k--){const after=k>0&&/^(antwort|buchstabe|buchstaben|nummer|lösung)$/.test(w[k-1]);
-      const i=letterOf(w[k],short||after);if(i>=0)return i}}
-  if(partial)return null;
-  // 2) Inhalt der Antwort
-  for(const s of alts){const i=byContent(s,opts||[]);if(i!==null)return i}
+const tri=w=>{const s='  '+w+' ',o=new Set();for(let i=0;i<s.length-2;i++)o.add(s.slice(i,i+3));return o};
+// exakt = 1; nur ähnlich zählt deutlich weniger (Rentenversicherung ≠ Krankenversicherung); Zahlen nur exakt
+function sim(a,b){if(a===b)return 1;if(/^\d+$/.test(a)||/^\d+$/.test(b))return 0;
+  if(a.length>=5&&b.length>=5&&(a.startsWith(b)||b.startsWith(a)))return .85;
+  const x=tri(a),y=tri(b);let n=0;for(const g of x)if(y.has(g))n++;const d=2*n/(x.size+y.size);return d>=.6?d*d:0}
+// Wie gut passt das Gesagte zu einer Antwort? (0–1)
+// Mischung aus „wie viel der Antwort wurde gesagt“ und „wie viel des Gesagten steht in der Antwort“
+function contentScore(said,opt){const ow=content(opt);if(!ow.length||!said.length)return 0;
+  const best=(w,list)=>{let m=0;for(const s of list){const v=sim(w,s);if(v>m)m=v}return m};
+  const rec=Math.min(1,ow.reduce((n,w)=>n+best(w,said),0)/Math.min(ow.length,3));
+  const pre=said.reduce((n,s)=>n+best(s,ow),0)/said.length;
+  return rec+pre?2*rec*pre/(rec+pre):0}
+// Buchstabe nur, wenn er eindeutig als Buchstabe gemeint ist (kurz gesagt oder nach „Antwort“)
+const ART=new Set(['die','der','das','den','dem']);
+function letterIn(text){const w=words(text),r=w.filter(x=>!FILL.has(x)),bare=r.filter(x=>!ART.has(x));
+  const any=n=>{for(const L of [SURE,NUMS,LOOSE]){const i=L.findIndex(l=>l.includes(n));if(i>=0)return i}return -1};
+  for(let k=0;k<w.length-1;k++)if(/^(antwort|buchstabe|buchstaben|lösung|nummer)$/.test(w[k])){const i=any(w[k+1]);if(i>=0)return i}
+  // Zahlen/Ordnungszahlen nur, wenn sonst nichts gesagt wurde („die zweite“, „drei“) – „drei Personen“ ist eine Antwort
+  if(bare.length===1){const i=NUMS.findIndex(l=>l.includes(bare[0]));if(i>=0)return i}
+  if(r.length&&r.length<=3)for(let k=r.length-1;k>=0;k--){const i=SURE.findIndex(l=>l.includes(r[k]));if(i>=0)return i}
+  if(r.length===1){const i=LOOSE.findIndex(l=>l.includes(r[0]));if(i>=0)return i}
+  if(r.length===0&&w.length===1){const i=LOOSE.findIndex(l=>l.includes(w[0]));if(i>=0)return i}
+  return -1}
+function parse(alts,opts){
+  alts=(alts||[]).map(String).filter(s=>s.trim());opts=opts||[];
+  for(const s of alts){const w=words(s);if(w.length>3)continue;
+    if(w.some(x=>/^(stopp?|beenden|aufhören|abbrechen)$/.test(x)))return'stop';
+    if(w.some(x=>/^(wiederholen|wiederhole|nochmal|nochmals|wiederholung)$/.test(x)))return'repeat';
+    if(w.some(x=>/^(weiter|nächste|überspringen)$/.test(x)))return'skip'}
+  // 1) Buchstabe – zuerst in der wahrscheinlichsten Erkennung, dann in den Alternativen
+  for(const s of alts){const i=letterIn(s);if(i>=0&&i<Math.max(opts.length,5))return i}
+  // 2) Antwort selbst: beste Übereinstimmung über alle Erkennungs-Varianten, mit klarem Abstand zur zweitbesten
+  if(!opts.length)return null;
+  const sc=opts.map(o=>Math.max(...alts.map(s=>contentScore(content(s),o))));
+  const order=sc.map((v,k)=>[v,k]).sort((a,b)=>b[0]-a[0]),[b1,b2]=[order[0],order[1]||[0,-1]];
+  // bei nur einem gesagten Stichwort muss es eindeutig zu genau einer Antwort gehören
+  const nSaid=Math.max(...alts.map(s=>content(s).length));
+  if(b1[0]>=.5&&b1[0]-b2[0]>=(nSaid<=1?.35:.2))return b1[1];
   return null}
+window.__skTest={parse:(a,o)=>parse(a,o),content:s=>content(s)};
 function setVState(s,heard){const el=document.getElementById('vst');if(!el)return;el.className='vst '+s;
-  el.innerHTML=s==='listen'?'<i></i>Hört zu – sag A, B, C, D oder E':s==='speak'?'<i></i>Liest vor …':s==='heard'?'<i></i>Gehört: „'+esc(heard)+'“':''}
+  el.innerHTML=s==='listen'?'<i></i>Jetzt sprechen – Buchstabe oder Antwort':s==='wait'?'<i></i>Mikrofon startet …':s==='speak'?'<i></i>Liest vor …':
+   s==='live'?'<i></i>Höre: „'+esc(heard)+'“':s==='heard'?'<i></i>Gehört: „'+esc(heard)+'“':''}
 function updVBtn(){const b=document.getElementById('mic');if(b){b.classList.toggle('on',vs.on);b.setAttribute('aria-pressed',vs.on)}}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function voiceAsk(){
@@ -338,27 +424,28 @@ async function voiceListen(my,tries){
   let quiet=0,miss=0,busy=0;
   while(true){
     await sleep(NA?120:250);if(my!==vToken||!vs.on||!run||run.done)return;
-    setVState('listen');const r=await listen();
+    setVState('wait');const r=await listen();
     if(my!==vToken||!vs.on||!run||run.done)return;
     if(r.err==='denied'){vs.on=false;vsave();updVBtn();setVState('');toast('Mikrofon nicht erlaubt');return}
     if(r.err==='busy'||r.err==='other'){if(++busy>3){setVState('');toast('Spracheingabe gestört – tippe aufs Mikrofon');return}await sleep(400);continue}
     if(r.err==='net'){setVState('');toast('Spracheingabe braucht Internet');return}
     if(r.err==='nomatch'){if(++quiet>=4){setVState('');toast('Nichts gehört – tippe aufs Mikrofon');return}continue}
-    const p=r.hit!==undefined?r.hit:parse(r.alts,curTexts(),false),btns=[...app.querySelectorAll('.a')];
-    if(typeof p==='number'&&btns[p]){answer(+btns[p].dataset.j);return}
+    const p=parse(r.alts,curTexts()),btns=[...app.querySelectorAll('.a')];
+    if(typeof p==='number'&&btns[p]){voicePick=p;setVState('heard',r.alts[0]||'');answer(+btns[p].dataset.j);return}
     if(p==='repeat'){voiceAsk();return}
     if(p==='skip'){go(1);return}
     if(p==='stop'){vs.on=false;vsave();updVBtn();stopVoice();toast('Sprachmodus aus');return}
     const heard=(r.alts&&r.alts[0])||'';
     if(++miss>=3){setVState('heard',heard);toast('Nicht verstanden – tippe aufs Mikrofon');return}
     setVState('heard',heard);await sleep(700);if(my!==vToken)return;
-    setVState('speak');await speak(miss===1?'Nicht verstanden. Sag zum Beispiel: Antwort B.':'Sag A, B, C, D oder E.');if(my!==vToken)return;
+    setVState('speak');await speak(miss===1?'Nicht verstanden. Sag den Buchstaben, zum Beispiel Berta, oder die Antwort.':'Bitte nochmal.');if(my!==vToken)return;
   }
 }
 async function voiceFeedback(q,ok,last,next){
   const my=++vToken,btns=[...app.querySelectorAll('.a')],ci=btns.findIndex(b=>isRight(q,+b.dataset.j));
   setVState('speak');
-  const fbt=ok?'Richtig.':'Falsch. Richtig ist '+'ABCDE'[ci]+': '+q.a[q.c];
+  const said=voicePick>=0?'ABCDE'[voicePick]+'. ':'';voicePick=-1;
+  const fbt=said+(ok?'Richtig.':'Falsch. Richtig ist '+'ABCDE'[ci]+'. '+q.a[q.c]);
   const p1=speak(fbt),p2=vs.expl?speak(q.e,est(fbt)):null;
   await p1;if(my!==vToken)return;if(p2){await p2;if(my!==vToken)return}
   setVState('');await sleep(150);if(my!==vToken||!vs.on)return;next();
@@ -424,8 +511,10 @@ function paint(j,fresh){
   const i=run.list[run.pos],q=Q[i],ok=isRight(q,j),last=run.pos===run.list.length-1,next=()=>go(1);
   app.querySelectorAll('.a').forEach(b=>{const k=+b.dataset.j;b.disabled=true;
     if(run.exam){b.classList.add(k===j?'pick':'dim');return}
-    if(isRight(q,k))b.classList.add('ok');else if(k===j)b.classList.add('bad');else b.classList.add('dim')});
-  if(!run.exam)document.getElementById('fb').innerHTML=`<div class="note ${ok?'ok':''}"><b>${ok?'Richtig':'Falsch'}</b>${ok?'':`<p class="rt">Richtig ist: ${esc(q.a[q.c])}</p>`}<p>${esc(q.e)}</p></div>`+(q.n?`<div class="note"><b>Hinweis</b>${esc(q.n)}</div>`:'');
+    if(isRight(q,k)){b.classList.add('ok');b.querySelector('.k').textContent='✓'}else if(k===j){b.classList.add('bad');b.querySelector('.k').textContent='✕'}else b.classList.add('dim')});
+  if(!run.exam)document.body.classList.add(ok?'mood-ok':'mood-bad');
+  const ICO=ok?'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>':'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  if(!run.exam)document.getElementById('fb').innerHTML=`<div class="verdict ${ok?'ok':'bad'}" role="status">${ICO}${ok?'Richtig!':'Leider falsch'}</div><div class="note ${ok?'ok':'bad'}"><b>Erklärung</b>${ok?'':`<p class="rt">Richtig ist: ${esc(q.a[q.c])}</p>`}<p>${esc(q.e)}</p></div>`+(q.n?`<div class="note"><b>Hinweis</b>${esc(q.n)}</div>`:'');
   else document.getElementById('fb').innerHTML='<p class="swh">Deine Antwort. Die Auswertung kommt am Ende.</p>';
   setBot(`<button class="pri" id="next">${last?'Ergebnis':'Weiter'}</button>`);
   document.getElementById('next').onclick=()=>{stopVoice();next()};

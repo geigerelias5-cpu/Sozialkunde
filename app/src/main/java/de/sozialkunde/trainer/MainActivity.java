@@ -2,6 +2,7 @@ package de.sozialkunde.trainer;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.webkit.WebSettings;
@@ -11,6 +12,7 @@ import android.webkit.WebView;
 public class MainActivity extends Activity {
     private WebView web;
     private VoiceBridge voice;
+    private AppBridge appBridge;
 
     @Override
     @SuppressLint("SetJavaScriptEnabled")
@@ -28,6 +30,8 @@ public class MainActivity extends Activity {
         web.setBackgroundColor(getColor(R.color.screen));
         voice = new VoiceBridge(this, web);
         web.addJavascriptInterface(voice, "AndroidVoice");
+        appBridge = new AppBridge(this, web);
+        web.addJavascriptInterface(appBridge, "AndroidApp");
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
         else web.loadUrl("file:///android_asset/index.html");
         setContentView(web);
@@ -54,6 +58,13 @@ public class MainActivity extends Activity {
         if (requestCode == VoiceBridge.REQ_MIC && voice != null) {
             voice.onMicPermission(results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED);
         }
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (appBridge != null && appBridge.onResult(requestCode, resultCode, data)) return;
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     /** App im Hintergrund: Vorlesen und Zuhören sofort stoppen. */

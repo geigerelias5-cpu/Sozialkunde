@@ -167,7 +167,8 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
                 }
                 finish("error", code);
             }
-            @Override public void onReadyForSpeech(Bundle p) { }
+            // Erst jetzt ist das Mikrofon wirklich offen: die App zeigt dann „Jetzt sprechen“
+            @Override public void onReadyForSpeech(Bundle p) { if (!finished) call("ready", id, null); }
             @Override public void onBeginningOfSpeech() { }
             @Override public void onRmsChanged(float v) { }
             @Override public void onBufferReceived(byte[] b) { }
@@ -181,6 +182,8 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
         i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
         i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
         i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, act.getPackageName());
+        i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L);
+        i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L);
         if (Build.VERSION.SDK_INT >= 33) {
             // Hinweis an die Erkennung: diese kurzen Wörter sind zu erwarten
             ArrayList<String> bias = new ArrayList<>(Arrays.asList(
