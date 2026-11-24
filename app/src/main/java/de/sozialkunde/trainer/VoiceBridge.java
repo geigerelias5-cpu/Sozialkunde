@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
 import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
@@ -11,6 +12,7 @@ import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
+import android.speech.tts.Voice;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 
@@ -20,6 +22,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Sprachausgabe (TextToSpeech) und Spracheingabe (SpeechRecognizer) für die WebView.
@@ -46,6 +49,12 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
     public void onInit(int status) {
         if (status != TextToSpeech.SUCCESS) return;
         tts.setLanguage(Locale.GERMANY);
+        pickBestVoice();
+        tts.setPitch(1.0f);
+        tts.setAudioAttributes(new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build());
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             @Override public void onStart(String id) { }
             @Override public void onDone(String id) { call("done", id, null); }
@@ -53,6 +62,27 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
             @Override public void onStop(String id, boolean interrupted) { call("done", id, null); }
         });
         ttsReady = true;
+    }
+
+    /** Beste installierte deutsche Stimme wählen: hohe Qualität, offline (keine Verzögerung), Deutschland vor AT/CH. */
+    private void pickBestVoice() {
+        try {
+            Set<Voice> voices = tts.getVoices();
+            if (voices == null) return;
+            Voice best = null;
+            int bestScore = Integer.MIN_VALUE;
+            for (Voice v : voices) {
+                Locale l = v.getLocale();
+                if (l == null || !"de".equals(l.getLanguage())) continue;
+                Set<String> f = v.getFeatures();
+                if (f != null && f.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)) continue;
+                int score = v.getQuality();
+                if (v.isNetworkConnectionRequired()) score -= 150;
+                if ("DE".equals(l.getCountry())) score += 20;
+                if (score > bestScore) { bestScore = score; best = v; }
+            }
+            if (best != null) tts.setVoice(best);
+        } catch (Exception ignored) { }
     }
 
     @JavascriptInterface

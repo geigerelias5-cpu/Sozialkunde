@@ -216,14 +216,39 @@ window.__voice={
   error:(id,code)=>{const f=lcb[id];delete lcb[id];f&&f({err:code})},
   pause:()=>stopVoice()
 };
-let deV=null;const pickVoice=()=>{if(NA||!('speechSynthesis' in window))return;const v=speechSynthesis.getVoices().filter(x=>/^de/i.test(x.lang));deV=v.find(x=>x.localService&&/anna|petra|helena|markus|yannick/i.test(x.name))||v.find(x=>x.localService)||v[0]||null};
+let deV=null;const pickVoice=()=>{if(NA||!('speechSynthesis' in window))return;const v=speechSynthesis.getVoices().filter(x=>/^de/i.test(x.lang));deV=v.find(x=>/premium|enhanced|erweitert|neural|natural/i.test(x.name+' '+x.voiceURI))||v.find(x=>x.localService&&/anna|petra|helena|markus|yannick|google/i.test(x.name))||v.find(x=>x.localService)||v[0]||null};
 if(!NA&&'speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+// ---- Text fürs Vorlesen aufbereiten: Abkürzungen ausschreiben, Kürzel buchstabieren, Zeichen ersetzen ----
+const LN={A:'A',B:'Be',C:'Ze',D:'De',E:'E',F:'Ef',G:'Ge',H:'Ha',I:'I',J:'Jott',K:'Ka',L:'El',M:'Em',N:'En',O:'O',P:'Pe',Q:'Ku',R:'Er',S:'Es',T:'Te',U:'U',V:'Fau',W:'We',X:'Ix',Y:'Ypsilon',Z:'Zett'};
+const spell=s=>s.split('').map(c=>LN[c.toUpperCase()]||c).join(' ');
+const WORDS={BBiG:'Berufsbildungsgesetz',BiBG:'Berufsbildungsgesetz',GG:'Grundgesetz',AktG:'Aktiengesetz',ArbZG:'Arbeitszeitgesetz',
+ JArbSchG:'Jugendarbeitsschutzgesetz',EFZG:'Entgeltfortzahlungsgesetz',BetrVG:'Betriebsverfassungsgesetz',VO:'Verordnung',
+ ELStAM:'Elstam',BAföG:'Bafög',NATO:'Nato',UNO:'Uno',UNICEF:'Unicef',OPEC:'Opec',KGaA:'Ka Ge auf Aktien',GdbR:'Ge Be Er',
+ I:'eins',II:'zwei',III:'drei',IV:'vier',V:'fünf',VI:'sechs'};
+const SPELL=['GmbH','AG','KG','OHG','BGB','BRD','USA','SPD','CDU','CSU','FDP','EZB','EU','AOK','KFZ','DGB','PDS','WTO','WHO','ID','GbR','PLO','ADAC','NGG','DAG','CGB','EWG','UN','UNHCR','IHK','IT','JAV','DGUV','BIP','UG','IG','DM','PC','KfW'];
+const L='A-Za-zÄÖÜäöüß';
+const wordRe=new RegExp('(?<!['+L+'])('+[...Object.keys(WORDS),...SPELL].sort((a,b)=>b.length-a.length).join('|')+')(?!['+L+'])','g');
+const FRAC={'1/2':'ein halb','1/3':'ein Drittel','2/3':'zwei Drittel','1/4':'ein Viertel','3/4':'drei Viertel'};
+function sayable(s){
+  return String(s)
+   .replace(/\bz\.\s?B\./g,'zum Beispiel').replace(/\bbzw\./g,'beziehungsweise').replace(/\bd\.\s?h\./g,'das heißt')
+   .replace(/\bu\.\s?a\./g,'unter anderem').replace(/\bggf\./g,'gegebenenfalls').replace(/\busw\./g,'und so weiter')
+   .replace(/\bca\./g,'circa').replace(/\bNr\./g,'Nummer').replace(/\bArt\.\s?/g,'Artikel ').replace(/\bAbs\.\s?/g,'Absatz ')
+   .replace(/\be\.\s?K\./g,'eingetragener Kaufmann').replace(/\be\.\s?V\./g,'eingetragener Verein')
+   .replace(/(%\s?[A-Za-zÄÖÜäöüß]+)\s?\/\s?(?=\d)/g,'$1, ').replace(/§§?\s?/g,'Paragraf ').replace(/\s?%/g,' Prozent').replace(/\s?€/g,' Euro')
+   .replace(/\b([1-3])\/([2-4])\b/g,m=>FRAC[m]||m).replace(/\/innen\b/g,'').replace(/CDU\/CSU/g,'CDU und CSU')
+   .replace(/(\d{4})\s?[–-]\s?(\d{4})/g,'$1 bis $2').replace(/\s?\/\s?/g,' oder ')
+   .replace(wordRe,m=>WORDS[m]||spell(m))
+   .replace(/\s\+\s/g,', ').replace(/\s[–—-]\s/g,', ').replace(/\s?\(\s?/g,', ').replace(/\s?\)\s?/g,', ')
+   .replace(/[„“"»«]/g,'').replace(/\s*,\s*([,.?!:])/g,'$1').replace(/,\s*,/g,',').replace(/\s{2,}/g,' ').replace(/,\s*$/,'').trim()}
 // wait = geschätzte Zeit, bis dieser Satz in der Warteschlange dran ist (nur für den Notfall-Timeout im Browser)
 const est=text=>400+text.length*85/vs.rate;
-function speak(text,wait=0){return new Promise(res=>{
+// Safari/Browser-Stimmen werden mit hoher Rate schnell undeutlich: dort sanfter skalieren
+const webRate=()=>Math.min(1.8,1+(vs.rate-1)*.55);
+function speak(text,wait=0){text=sayable(text);return new Promise(res=>{
   if(NA){const id='s'+(++cbn);scb[id]=res;try{NA.speak(text,vs.rate,id)}catch(e){res()}return}
   if(!('speechSynthesis' in window))return res();
-  const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=vs.rate;if(deV)u.voice=deV;
+  const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=webRate();u.pitch=1;if(deV)u.voice=deV;
   let d=false;const fin=()=>{if(!d){d=true;res()}};u.onend=fin;u.onerror=fin;
   setTimeout(fin,2500+wait+est(text));speechSynthesis.speak(u);
 })}
@@ -294,7 +319,7 @@ async function voiceAsk(){
   const live=()=>my===vToken&&vs.on&&run&&!run.done;
   const btns=[...app.querySelectorAll('.a')];setVState('speak');
   // Alles sofort in die Warteschlange: keine Pausen zwischen Frage und Antworten
-  const parts=[q.q,...btns.map((b,k)=>'ABCDE'[k]+': '+q.a[+b.dataset.j])];
+  const parts=[q.q,...btns.map((b,k)=>'ABCDE'[k]+'. '+q.a[+b.dataset.j])];
   let acc=0;const ps=parts.map(p=>{const pr=speak(p,acc);acc+=est(p);return pr});
   await ps[0];if(!live())return;
   for(let k=0;k<btns.length;k++){btns[k].classList.add('rd');await ps[k+1];btns[k].classList.remove('rd');if(!live())return}
