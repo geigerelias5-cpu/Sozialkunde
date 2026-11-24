@@ -2,6 +2,7 @@ package de.sozialkunde.trainer;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -9,6 +10,7 @@ import android.webkit.WebView;
 /** Zeigt den Trainer (assets/index.html) bildschirmfüllend an. Fortschritt bleibt im localStorage der App. */
 public class MainActivity extends Activity {
     private WebView web;
+    private VoiceBridge voice;
 
     @Override
     @SuppressLint("SetJavaScriptEnabled")
@@ -24,6 +26,8 @@ public class MainActivity extends Activity {
         web.setVerticalScrollBarEnabled(false);
         web.setHorizontalScrollBarEnabled(false);
         web.setBackgroundColor(getColor(R.color.screen));
+        voice = new VoiceBridge(this, web);
+        web.addJavascriptInterface(voice, "AndroidVoice");
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
         else web.loadUrl("file:///android_asset/index.html");
         setContentView(web);
@@ -45,7 +49,23 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == VoiceBridge.REQ_MIC && voice != null) {
+            voice.onMicPermission(results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED);
+        }
+    }
+
+    /** App im Hintergrund: Vorlesen und Zuhören sofort stoppen. */
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (voice != null) voice.pause();
+    }
+
+    @Override
     protected void onDestroy() {
+        if (voice != null) voice.destroy();
         if (web != null) web.destroy();
         super.onDestroy();
     }

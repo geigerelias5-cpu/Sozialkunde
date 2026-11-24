@@ -95,6 +95,21 @@ h3{font-size:14px;color:var(--mut);font-weight:500;margin:22px 4px 8px}
 .note p{margin:0}.note .rt{font-weight:700;margin-bottom:6px}
 .note.ex b{color:var(--ink)}.note.ex b::before{background:var(--ink)}.note.ok b::before{background:var(--ink)}
 .ri .ee{color:var(--mut);font-size:14px;margin-top:6px}
+.tr2{display:flex;align-items:center;gap:8px}
+.ib.mic.on{background:var(--red);border-color:var(--red);color:#fff}
+.vst{display:flex;align-items:center;gap:10px;min-height:22px;margin:-6px 0 12px;font-size:14px;color:var(--mut)}
+.vst:empty{display:none}
+.vst i{width:10px;height:10px;border-radius:50%;background:var(--mut);flex:none}
+.vst.listen{color:var(--red);font-weight:700}.vst.listen i{background:var(--red);animation:pulse 1s ease-in-out infinite}
+.vst.speak i{background:var(--ink);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.6);opacity:.45}}
+.a.rd{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.seg{display:flex;gap:4px;background:var(--card2);border-radius:99px;padding:4px;flex:none}
+.seg button{border:0;background:none;border-radius:99px;min-height:40px;padding:0 12px;font-size:14px;cursor:pointer;color:var(--mut)}
+.seg button[aria-pressed=true]{background:var(--card);color:var(--ink);font-weight:700;box-shadow:0 1px 3px #0002}
+.setx{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:12px 2px;min-height:64px;flex-wrap:wrap}
+.setx small{display:block;color:var(--mut);font-size:13px}
+.vhint{font-size:13px;color:var(--mut);margin:-4px 2px 8px}
 @keyframes up{from{opacity:0;transform:translateY(12px)}}
 .enter>*{animation:up .45s cubic-bezier(.2,.9,.2,1) both}.enter>*:nth-child(2){animation-delay:.04s}.enter>*:nth-child(3){animation-delay:.08s}.enter>*:nth-child(n+4){animation-delay:.12s}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -123,7 +138,7 @@ const ARR='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="c
 const CHEV='<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>';
 let run=null,openB=-1;
 function setBot(h){bot.hidden=!h;botin.innerHTML=h||''}
-function show(html){app.innerHTML=html;app.classList.remove('enter');void app.offsetWidth;app.classList.add('enter');scrollTo(0,0)}
+function show(html){stopVoice();app.innerHTML=html;app.classList.remove('enter');void app.offsetWidth;app.classList.add('enter');scrollTo(0,0)}
 function home(keep){
   run=null;setBot('');
   const c={k:0,w:0,s:0};all().forEach(i=>{const s=status(i);if(s)c[s]++});
@@ -159,29 +174,122 @@ function drawSettings(step){
   const seen=Object.keys(st).length;
   pan.innerHTML=`<div class="grab"></div><h2>Einstellungen<button class="ib" id="cls" aria-label="Schließen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
   <button class="set" id="thm" role="switch" aria-checked="${isDark()}"><span><b>Dunkelmodus</b><small>${theme?'Eigene Wahl':'Folgt gerade dem Handy'}</small></span><span class="sw"></span></button>
+  <button class="set" id="vtg" role="switch" aria-checked="${vs.on}"><span><b>Sprachmodus</b><small>Frage und Antworten vorlesen, mit A bis E antworten</small></span><span class="sw"></span></button>
+  ${canSpeak?'':'<p class="vhint">Sprachausgabe wird auf diesem Gerät nicht unterstützt.</p>'}${canSpeak&&!canListen?'<p class="vhint">Spracheingabe wird hier nicht unterstützt, nur Vorlesen.</p>':''}
+  <div class="setx"><span><b>Vorlesetempo</b></span><span class="seg" id="seg">${[[1,'Normal'],[1.25,'Schnell'],[1.5,'Sehr schnell']].map(([r,l])=>`<button data-r="${r}" aria-pressed="${vs.rate===r}">${l}</button>`).join('')}</span></div>
+  <button class="set" id="vex" role="switch" aria-checked="${vs.expl}"><span><b>Erklärung vorlesen</b><small>Nach jeder Antwort auch das „Warum“ vorlesen</small></span><span class="sw"></span></button>
   ${step===0?`<button class="set warn" id="rst"><span>Gesamten Fortschritt löschen<small>${seen} von ${N} Fragen haben einen Lernstand</small></span></button>`:''}
   ${step===1?`<div class="conf"><b>Wirklich alles löschen?</b><p>Alle ${seen} geübten Fragen werden auf „offen“ zurückgesetzt.</p><div class="in"><button class="del" id="y1">Ja, weiter</button><button class="no" id="n1">Abbrechen</button></div></div>`:''}
   ${step===2?`<div class="conf"><b>Letzte Abfrage</b><p>Das kann nicht rückgängig gemacht werden. Dein gesamter Lernfortschritt ist danach weg.</p><div class="in"><button class="del" id="y2">Endgültig löschen</button><button class="no" id="n2">Abbrechen</button></div></div>`:''}`;
   document.getElementById('cls').onclick=closeSettings;
   document.getElementById('thm').onclick=()=>{theme=isDark()?'light':'dark';try{localStorage.setItem(TKEY,theme)}catch(e){}applyTheme();drawSettings(step)};
   const on=(id,f)=>{const b=document.getElementById(id);if(b)b.onclick=f};
+  on('vtg',()=>{if(!canSpeak){toast('Sprachausgabe wird hier nicht unterstützt');return}vs.on=!vs.on;vsave();if(!vs.on)stopVoice();drawSettings(step)});
+  on('vex',()=>{vs.expl=!vs.expl;vsave();drawSettings(step)});
+  pan.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{vs.rate=+b.dataset.r;vsave();drawSettings(step);if('speechSynthesis' in window&&!NA){try{speechSynthesis.cancel()}catch(e){}}speak('So schnell lese ich vor.')});
   on('rst',()=>drawSettings(1));on('y1',()=>drawSettings(2));on('n1',()=>drawSettings(0));on('n2',()=>drawSettings(0));
   on('y2',()=>{st={};save();openB=-1;closeSettings();home();toast('Fortschritt gelöscht')});
 }
+// ---------- Sprachmodus: Vorlesen + mit A–E antworten ----------
+const VKEY='sk-voice';let vs={on:false,rate:1.25,expl:false};
+try{Object.assign(vs,JSON.parse(localStorage.getItem(VKEY))||{})}catch(e){}
+const vsave=()=>{try{localStorage.setItem(VKEY,JSON.stringify(vs))}catch(e){}};
+const NA=window.AndroidVoice||null, SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const canSpeak=!!NA||('speechSynthesis' in window);
+const canListen=NA?(()=>{try{return NA.canListen()}catch(e){return false}})():!!SR;
+let vToken=0,cbn=0,rec=null;const scb={},lcb={};
+window.__voice={
+  done:id=>{const f=scb[id];delete scb[id];f&&f()},
+  result:(id,json)=>{const f=lcb[id];delete lcb[id];let r=null;try{r=JSON.parse(json)}catch(e){}f&&f(r)},
+  error:(id,code)=>{const f=lcb[id];delete lcb[id];f&&f(code==='denied'?'denied':null)},
+  pause:()=>stopVoice()
+};
+let deV=null;const pickVoice=()=>{if(NA||!('speechSynthesis' in window))return;const v=speechSynthesis.getVoices().filter(x=>/^de/i.test(x.lang));deV=v.find(x=>x.localService&&/anna|petra|helena|markus|yannick/i.test(x.name))||v.find(x=>x.localService)||v[0]||null};
+if(!NA&&'speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+function speak(text){return new Promise(res=>{
+  if(NA){const id='s'+(++cbn);scb[id]=res;try{NA.speak(text,vs.rate,id)}catch(e){res()}return}
+  if(!('speechSynthesis' in window))return res();
+  const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=vs.rate;if(deV)u.voice=deV;
+  let d=false;const fin=()=>{if(!d){d=true;res()}};u.onend=fin;u.onerror=fin;
+  setTimeout(fin,2500+text.length*110/vs.rate);speechSynthesis.speak(u);
+})}
+function listen(){return new Promise(res=>{
+  if(NA){const id='l'+(++cbn);lcb[id]=res;try{NA.listen(id)}catch(e){delete lcb[id];res(null)}return}
+  if(!SR)return res(null);
+  const r=new SR();rec=r;r.lang='de-DE';r.maxAlternatives=5;r.interimResults=false;r.continuous=false;
+  let got=null;r.onresult=e=>{got=[...e.results[0]].map(a=>a.transcript)};
+  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed')got='denied'};
+  r.onend=()=>{if(rec===r)rec=null;res(got)};
+  try{r.start()}catch(e){rec=null;res(null)}
+})}
+function stopVoice(){vToken++;
+  try{if(NA)NA.stop();else if('speechSynthesis' in window)speechSynthesis.cancel()}catch(e){}
+  if(rec){try{rec.abort()}catch(e){}rec=null}
+  for(const k in lcb){const f=lcb[k];delete lcb[k];f(null)}
+  for(const k in scb){const f=scb[k];delete scb[k];f()}
+  setVState('')}
+const LET=[['a','ah','aa','ar','eins','erste','erstens','1'],['b','be','bee','beh','zwei','zweite','2'],['c','ce','cee','zeh','tse','ze','see','drei','dritte','3'],['d','de','dee','deh','vier','vierte','4'],['e','ee','eh','fünf','fünfte','5']];
+function parse(alts){
+  for(const s of alts||[]){const w=String(s).toLowerCase().replace(/[^a-zäöüß0-9 ]/g,' ').split(/\s+/).filter(Boolean);if(!w.length)continue;
+    if(w.some(x=>/^(stopp?|ende|beenden|aufhören)$/.test(x)))return'stop';
+    if(w.some(x=>/^(wiederholen|wiederhole|nochmal|nochmals|wiederholung)$/.test(x)))return'repeat';
+    if(w.some(x=>/^(weiter|nächste|überspringen)$/.test(x)))return'skip';
+    for(let k=w.length-1;k>=0;k--){const i=LET.findIndex(l=>l.includes(w[k]));if(i>=0)return i}}
+  return null}
+function setVState(s){const el=document.getElementById('vst');if(!el)return;el.className='vst '+s;
+  el.innerHTML=s==='listen'?'<i></i>Hört zu – sag A, B, C, D oder E':s==='speak'?'<i></i>Liest vor …':''}
+function updVBtn(){const b=document.getElementById('mic');if(b){b.classList.toggle('on',vs.on);b.setAttribute('aria-pressed',vs.on)}}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function voiceAsk(){
+  if(!run||run.done||!canSpeak)return;const my=++vToken;const i=run.list[run.pos],q=Q[i];
+  const live=()=>my===vToken&&vs.on&&run&&!run.done;
+  const btns=[...app.querySelectorAll('.a')];setVState('speak');
+  await speak(q.q);if(!live())return;
+  for(let k=0;k<btns.length;k++){btns[k].classList.add('rd');await speak('ABCDE'[k]+': '+q.a[+btns[k].dataset.j]);btns[k].classList.remove('rd');if(!live())return}
+  voiceListen(my,0);
+}
+async function voiceListen(my,tries){
+  if(!canListen){setVState('');return}
+  setVState('listen');const r=await listen();
+  if(my!==vToken||!vs.on||!run||run.done)return;setVState('');
+  if(r==='denied'){vs.on=false;vsave();updVBtn();toast('Mikrofon nicht erlaubt');return}
+  const p=parse(r),btns=[...app.querySelectorAll('.a')];
+  if(typeof p==='number'&&btns[p]){answer(+btns[p].dataset.j);return}
+  if(p==='repeat'){voiceAsk();return}
+  if(p==='stop'){vs.on=false;vsave();updVBtn();stopVoice();toast('Sprachmodus aus');return}
+  if(tries<1){setVState('speak');await speak('Nicht verstanden. Sag A, B, C, D oder E.');if(my!==vToken)return;voiceListen(my,tries+1)}
+  else{setVState('');toast('Nicht verstanden – tippe aufs Mikrofon')}
+}
+async function voiceFeedback(q,ok,last,next){
+  const my=++vToken,btns=[...app.querySelectorAll('.a')],ci=btns.findIndex(b=>isRight(q,+b.dataset.j));
+  setVState('speak');
+  await speak(ok?'Richtig.':'Falsch. Richtig ist '+'ABCDE'[ci]+': '+q.a[q.c]);if(my!==vToken)return;
+  if(vs.expl){await speak(q.e);if(my!==vToken)return}
+  setVState('');await sleep(600);if(my!==vToken||!vs.on)return;next();
+}
+function toggleVoice(){
+  if(!canSpeak){toast('Sprachausgabe wird hier nicht unterstützt');return}
+  vs.on=!vs.on;vsave();updVBtn();
+  if(vs.on){if(!canListen)toast('Nur Vorlesen – Spracheingabe geht hier nicht');if(run&&!run.done)voiceAsk()}
+  else stopVoice();
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopVoice()});
 function start(list,label){run={list,label,pos:0,right:0,exam:label==='Prüfung'};ask()}
 function ask(){
   const i=run.list[run.pos],q=Q[i],order=shuffle(q.a.map((t,j)=>j));run.done=false;
-  show(`<div class="top"><button class="ib" id="back" aria-label="Zurück">${ARR}</button><span class="cap">${run.label}</span><span class="cnt">${run.pos+1}/${run.list.length}</span></div>
+  show(`<div class="top"><button class="ib" id="back" aria-label="Zurück">${ARR}</button><span class="cap">${run.label}</span><span class="tr2"><span class="cnt">${run.pos+1}/${run.list.length}</span>${canSpeak?`<button class="ib mic ${vs.on?'on':''}" id="mic" aria-label="Sprachmodus" aria-pressed="${vs.on}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}</span></div>
   <div class="pbar">${run.list.length<=40?run.list.map((x,k)=>`<i class="${k<run.pos?'d':k===run.pos?'c':''}"></i>`).join(''):`<i class="d" style="flex:${run.pos}"></i><i style="flex:${run.list.length-run.pos}"></i>`}</div>
-  <div class="qn">Frage ${i+1}</div><div class="q">${esc(q.q)}</div>
+  <div class="qn">Frage ${i+1}</div><div class="q">${esc(q.q)}</div><div class="vst" id="vst"></div>
   <div class="ans">${order.map((j,k)=>`<button class="a" data-j="${j}"><span class="k">${'ABCDE'[k]}</span><span>${esc(q.a[j])}</span></button>`).join('')}</div><div id="fb"></div>`);
   document.getElementById('back').onclick=()=>home();
   app.querySelectorAll('.a').forEach(b=>b.onclick=()=>answer(+b.dataset.j));
+  const m=document.getElementById('mic');if(m)m.onclick=toggleVoice;
   setBot('');
+  if(vs.on)voiceAsk();
 }
 const isRight=(q,j)=>j===q.c||q.a[j]===q.a[q.c];
 function answer(j){
-  if(run.done)return;run.done=true;
+  if(run.done)return;run.done=true;stopVoice();
   const i=run.list[run.pos],q=Q[i],ok=isRight(q,j);
   const x=st[i]||{r:0,w:0,s:0};if(ok){x.r++;x.s++}else{x.w++;x.s=0}st[i]=x;save();if(ok)run.right++;
   const last=run.pos===run.list.length-1,next=()=>{if(last)result();else{run.pos++;ask()}};
@@ -189,7 +297,8 @@ function answer(j){
   app.querySelectorAll('.a').forEach(b=>{const k=+b.dataset.j;b.disabled=true;if(isRight(q,k))b.classList.add('ok');else if(k===j)b.classList.add('bad');else b.classList.add('dim')});
   document.getElementById('fb').innerHTML=`<div class="note ${ok?'ok':''}"><b>${ok?'Richtig':'Falsch'}</b>${ok?'':`<p class="rt">Richtig ist: ${esc(q.a[q.c])}</p>`}<p>${esc(q.e)}</p></div>`+(q.n?`<div class="note"><b>Hinweis</b>${esc(q.n)}</div>`:'');
   setBot(`<button class="pri" id="next">${last?'Ergebnis':'Weiter'}</button>`);
-  document.getElementById('next').onclick=next;
+  document.getElementById('next').onclick=()=>{stopVoice();next()};
+  if(vs.on&&canSpeak)voiceFeedback(q,ok,last,next);
 }
 const grade=p=>p>=.92?'1':p>=.81?'2':p>=.67?'3':p>=.5?'4':p>=.3?'5':'6';
 const item=i=>{const q=Q[i];return`<li class="ri"><div class="qn">Frage ${i+1}</div><div>${esc(q.q)}</div><div class="aa">${esc(q.a[q.c])}</div><div class="ee">${esc(q.e)}</div>${q.n?`<div class="nn">Hinweis: ${esc(q.n)}</div>`:''}</li>`};
@@ -201,6 +310,7 @@ function result(){
   document.getElementById('back').onclick=()=>home();
   setBot(`<button class="pri" id="again">${run.exam?'Neue Prüfung':'Nochmal'}</button><button class="sec" id="h">Start</button>`);
   document.getElementById('h').onclick=()=>home();
+  if(vs.on&&canSpeak){const my=++vToken;speak((run.exam?'Note '+grade(p)+'. ':'')+run.right+' von '+n+' richtig.')}
   document.getElementById('again').onclick=()=>label==='Prüfung'?start(shuffle(all()).slice(0,30),label):start(shuffle(again),label);
 }
 function list(){
