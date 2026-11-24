@@ -28,6 +28,7 @@ h1{font-size:30px;line-height:1.05;margin:2px 0 0;font-weight:700}
 .row3{display:flex;justify-content:space-between;font-size:14px;color:var(--mut);border-top:1px solid var(--line);padding-top:10px}
 .row3 b{color:var(--ink);font-family:Doto,monospace;font-weight:900;font-size:18px;margin-right:4px}.row3 .r b{color:var(--red)}
 .pri{width:100%;min-height:58px;border:0;border-radius:99px;background:var(--red);color:#fff;font-weight:700;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+.sec.wide{width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:700}
 .acts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:8px}
 .sec{min-height:56px;border:1px solid var(--line);border-radius:99px;background:var(--card);font-weight:500;font-size:15px;cursor:pointer;padding:0 12px}
 .sec:disabled{opacity:.4;cursor:default}
@@ -178,6 +179,7 @@ function home(keep){
    <div class="dots" aria-hidden="true">${blocks.map(x=>`<i class="${x.n.k===x.ids.length?'k':x.n.w?'w':x.n.k+x.n.s?'s':''}"></i>`).join('')}</div>
    <div class="row3"><span><b>${seen}</b>geübt</span><span class="r"><b>${c.w}</b>falsch</span><span><b>${N-seen}</b>offen</span></div></div>
   <button class="pri" id="learn">Weiterlernen · 20 Fragen</button>
+  <button class="sec wide" id="rand"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Alle ${N} Fragen zufällig</button>
   <div class="acts"><button class="sec" id="exam">Prüfung · 30</button><button class="sec" id="wrong" ${c.w?'':'disabled'}>Fehler · ${c.w}</button></div>
   <h3>Fragen nach Blöcken</h3>
   <ul class="list">${blocks.map(x=>`<li class="${x.b===openB?'open':''}" data-b="${x.b}"><button class="blk" data-t="${x.b}"><span class="n">${x.b+1}</span><span><b>Fragen ${x.b*B+1}–${x.b*B+x.ids.length}</b><small>${x.n.k} sicher · ${x.n.w} falsch</small><span class="tr"><i class="k" style="width:${x.n.k/x.ids.length*100}%"></i><i class="s" style="width:${x.n.s/x.ids.length*100}%"></i><i class="w" style="width:${x.n.w/x.ids.length*100}%"></i></span></span>${CHEV}</button>
@@ -187,6 +189,7 @@ function home(keep){
   if(keep){const y=scrollY;app.innerHTML=html;scrollTo(0,y)}else show(html);
   document.getElementById('learn').onclick=()=>{const pr=i=>({w:0,'':1,s:2,k:3})[status(i)];start(shuffle(all()).sort((a,b)=>pr(a)-pr(b)).slice(0,20),'Lernen')};
   document.getElementById('exam').onclick=()=>start(shuffle(all()).slice(0,30),'Prüfung');
+  document.getElementById('rand').onclick=()=>start(shuffle(all()),'Alle zufällig');
   document.getElementById('wrong').onclick=()=>start(shuffle(all().filter(i=>status(i)==='w')),'Fehler');
   document.getElementById('all').onclick=()=>list();
   app.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{const li=b.parentElement,o=li.classList.toggle('open');app.querySelectorAll('.list>li.open').forEach(x=>x!==li&&x.classList.remove('open'));openB=o?+li.dataset.b:-1});
@@ -394,7 +397,15 @@ function parse(alts,opts){
   const nSaid=Math.max(...alts.map(s=>content(s).length));
   if(b1[0]>=.5&&b1[0]-b2[0]>=(nSaid<=1?.35:.2))return b1[1];
   return null}
-window.__skTest={parse:(a,o)=>parse(a,o),content:s=>content(s)};
+// ---- Grammatik für die Offline-Erkennung: nur diese Wörter darf sie hören (Rest = [unk]) ----
+// Im Labor gemessen: Buchstaben + Lautschrift + deutsches Buchstabieralphabet; Artikel (die/der …) bewusst NICHT, sonst wird D zu „die“
+const G_BASE=['a','b','c','d','e','ah','aa','be','bee','ce','zeh','ze','tse','de','dee','eh','anton','berta','caesar','dora','emil','antwort','buchstabe','stopp','stop','wiederholen','nochmal','weiter'];
+const NUMWORD=Object.fromEntries(Object.entries(NUMW).filter(([w])=>!['ein','eine'].includes(w)).map(([w,n])=>[String(n),w]));
+function grammarFor(opts){const s=new Set(G_BASE);
+  for(const o of opts)for(let w of words(o)){if(/^\d+$/.test(w)){w=NUMWORD[w];if(!w)continue}
+    if(w.length>=2&&!/\d/.test(w)&&!STOPW.has(w)&&!FILL.has(w))s.add(w)}
+  return[...s,'[unk]']}
+window.__skTest={parse:(a,o)=>parse(a,o),content:s=>content(s),grammar:o=>grammarFor(o)};
 function setVState(s,heard){const el=document.getElementById('vst');if(!el)return;el.className='vst '+s;
   el.innerHTML=s==='listen'?'<i></i>Jetzt sprechen – Buchstabe oder Antwort':s==='wait'?'<i></i>Mikrofon startet …':s==='speak'?'<i></i>Liest vor …':
    s==='live'?'<i></i>Höre: „'+esc(heard)+'“':s==='heard'?'<i></i>Gehört: „'+esc(heard)+'“':''}
