@@ -3,3 +3,4 @@ app/build/
 build/
 local.properties
 *.apk
+app/src/main/assets/model-de/

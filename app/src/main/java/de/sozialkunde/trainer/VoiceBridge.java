@@ -18,6 +18,12 @@ import android.webkit.WebView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.vosk.LibVosk;
+import org.vosk.LogLevel;
+import org.vosk.Model;
+import org.vosk.Recognizer;
+import org.vosk.android.SpeechService;
+import org.vosk.android.StorageService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,11 +44,38 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
     private SpeechRecognizer recognizer;
     private String pendingListen;
     private String activeListen;
+    private String pendingGrammar;
+
+    // ---- Offline-Erkennung (Vosk): hört nur auf die erlaubten Wörter der aktuellen Frage ----
+    private volatile Model voskModel;
+    private volatile String voskState = "loading"; // loading | ready | failed
+    private SpeechService voskService;
 
     VoiceBridge(Activity act, WebView web) {
         this.act = act;
         this.web = web;
         this.tts = new TextToSpeech(act, this);
+        loadVosk();
+    }
+
+    /** Modell aus der APK entpacken (nur beim ersten Start spürbar) und laden. */
+    private void loadVosk() {
+        try {
+            LibVosk.setLogLevel(LogLevel.WARNINGS);
+            StorageService.unpack(act, "model-de", "model",
+                    model -> { voskModel = model; voskState = "ready"; jsRaw("window.__voice&&__voice.engine&&__voice.engine('vosk')"); },
+                    error -> { voskState = "failed"; jsRaw("window.__voice&&__voice.engine&&__voice.engine('google')"); });
+        } catch (Throwable t) {
+            voskState = "failed";
+        }
+    }
+
+    /** "vosk" (offline bereit), "loading" (wird vorbereitet) oder "google" (Ersatz). */
+    @JavascriptInterface
+    public String engine() {
+        if ("ready".equals(voskState)) return "vosk";
+        if ("loading".equals(voskState)) return "loading";
+        return "google";
     }
 
     @Override
@@ -100,6 +133,7 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
             pendingListen = null;
             activeListen = null;
             if (recognizer != null) recognizer.cancel();
+            stopVosk();
         });
     }
 
@@ -109,23 +143,34 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
     }
 
     @JavascriptInterface
-    public void listen(String id) {
+    public void listen(String id) { listenWith(id, null); }
+
+    /** grammarJson: JSON-Liste der erlaubten Wörter, z. B. ["a","b",…,"[unk]"]. */
+    @JavascriptInterface
+    public void listenWith(String id, String grammarJson) {
         act.runOnUiThread(() -> {
             if (act.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                 pendingListen = id;
+                pendingGrammar = grammarJson;
                 act.requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC);
                 return;
             }
-            startListening(id);
+            route(id, grammarJson);
         });
+    }
+
+    private void route(String id, String grammarJson) {
+        if (voskModel != null && grammarJson != null) startVosk(id, grammarJson);
+        else startListening(id);
     }
 
     /** Aufgerufen von MainActivity, wenn der Nutzer die Mikrofon-Abfrage beantwortet hat. */
     void onMicPermission(boolean granted) {
-        String id = pendingListen;
+        String id = pendingListen, g = pendingGrammar;
         pendingListen = null;
+        pendingGrammar = null;
         if (id == null) return;
-        if (granted) startListening(id);
+        if (granted) route(id, g);
         else call("error", id, "denied");
     }
 
@@ -194,13 +239,103 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
         recognizer.startListening(i);
     }
 
+    private void startVosk(String id, String grammarJson) {
+        stopVosk();
+        final Recognizer rec;
+        try {
+            rec = new Recognizer(voskModel, 16000.0f, grammarJson);
+            rec.setMaxAlternatives(3);
+            voskService = new SpeechService(rec, 16000.0f);
+        } catch (Exception e) {
+            startListening(id); // Ersatz: Google-Erkennung
+            return;
+        }
+        activeListen = id;
+        final SpeechService svc = voskService;
+        org.vosk.android.RecognitionListener l = new org.vosk.android.RecognitionListener() {
+            private boolean finished = false;
+            private void finish(String fn, String arg) {
+                if (finished) return;
+                finished = true;
+                if (id.equals(activeListen)) activeListen = null;
+                // nicht im Callback selbst stoppen, sondern direkt danach
+                web.post(() -> { if (voskService == svc) stopVosk(); try { rec.close(); } catch (Exception ignored) { } });
+                call(fn, id, arg);
+            }
+            @Override public void onPartialResult(String hyp) {
+                if (finished) return;
+                String t = clean(optText(hyp, "partial"));
+                if (!t.isEmpty()) call("partial", id, new JSONArray().put(t).toString());
+            }
+            @Override public void onResult(String hyp) {
+                // Ende einer Äußerung: nur nehmen, wenn mehr als Rauschen/[unk] erkannt wurde
+                JSONArray alts = alternatives(hyp);
+                if (alts.length() > 0) finish("result", alts.toString());
+            }
+            @Override public void onFinalResult(String hyp) {
+                JSONArray alts = alternatives(hyp);
+                if (alts.length() > 0) finish("result", alts.toString());
+                else finish("error", "nomatch");
+            }
+            @Override public void onError(Exception e) { finish("error", "other"); }
+            @Override public void onTimeout() { finish("error", "nomatch"); }
+        };
+        try {
+            svc.startListening(l, 9000);
+            call("ready", id, null);
+        } catch (Exception e) {
+            stopVosk();
+            startListening(id);
+        }
+    }
+
+    private void stopVosk() {
+        if (voskService != null) {
+            try { voskService.stop(); } catch (Exception ignored) { }
+            try { voskService.shutdown(); } catch (Exception ignored) { }
+            voskService = null;
+        }
+    }
+
+    private static String optText(String json, String key) {
+        try { return new JSONObject(json).optString(key, ""); } catch (Exception e) { return ""; }
+    }
+
+    private static String clean(String t) {
+        return t == null ? "" : t.replace("[unk]", " ").replaceAll("\\s+", " ").trim();
+    }
+
+    /** Vosk liefert {"alternatives":[{"text":…},…]} oder {"text":…}; leere/[unk]-Ergebnisse fallen weg. */
+    private static JSONArray alternatives(String json) {
+        JSONArray out = new JSONArray();
+        try {
+            JSONObject o = new JSONObject(json);
+            JSONArray a = o.optJSONArray("alternatives");
+            if (a != null) {
+                for (int i = 0; i < a.length(); i++) {
+                    String t = clean(a.getJSONObject(i).optString("text", ""));
+                    if (!t.isEmpty()) out.put(t);
+                }
+            } else {
+                String t = clean(o.optString("text", ""));
+                if (!t.isEmpty()) out.put(t);
+            }
+        } catch (Exception ignored) { }
+        return out;
+    }
+
     /** Zuhören abbrechen (z. B. weil ein Zwischenergebnis schon eindeutig war), Vorlesen läuft weiter. */
     @JavascriptInterface
     public void cancelListen() {
         act.runOnUiThread(() -> {
             activeListen = null;
             if (recognizer != null) recognizer.cancel();
+            stopVosk();
         });
+    }
+
+    private void jsRaw(String js) {
+        act.runOnUiThread(() -> web.evaluateJavascript(js, null));
     }
 
     /** Ruft window.__voice.<fn>(id[, arg]) im WebView auf. */
@@ -218,6 +353,8 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
     }
 
     void destroy() {
+        stopVosk();
+        if (voskModel != null) try { voskModel.close(); } catch (Exception ignored) { }
         tts.shutdown();
         if (recognizer != null) recognizer.destroy();
     }

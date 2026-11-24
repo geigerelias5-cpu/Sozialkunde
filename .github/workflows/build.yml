@@ -2,6 +2,7 @@ name: APK bauen
 
 on:
   push:
+    branches: [main, 'build-*']
     paths-ignore:
       - 'docs/**'
       - 'README.md'
@@ -23,6 +24,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Sprachmodell für die Offline-Erkennung laden
+        run: |
+          curl -sfL --retry 3 -o model.zip https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip
+          unzip -q model.zip
+          rm -rf app/src/main/assets/model-de
+          mv vosk-model-small-de-0.15 app/src/main/assets/model-de
+          echo "small-de-0.15" > app/src/main/assets/model-de/uuid
+          du -sh app/src/main/assets/model-de
+
       - name: APK kompilieren
         env:
           SK_KEY_PASSWORD: ${{ secrets.SK_KEY_PASSWORD }}
@@ -39,6 +49,7 @@ jobs:
           path: Sozialkunde.apk
 
       - name: Als Release veröffentlichen (direkter Download-Link)
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
