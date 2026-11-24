@@ -5,7 +5,7 @@ words = json.load(open(WORDS))
 def missing(cands):
     """Ein Recognizer mit allen Kandidaten – Vosk meldet jedes unbekannte Wort als Warnung."""
     code = ("import json,sys;from vosk import Model,KaldiRecognizer,SetLogLevel;SetLogLevel(0);"
-            f"m=Model({MODEL!r});w=json.load(open(sys.argv[1]));KaldiRecognizer(m,16000,json.dumps(w+['[unk]']))")
+            f"m=Model({MODEL!r});w=json.load(open(sys.argv[1]));KaldiRecognizer(m,16000,json.dumps(w+['[unk]'],ensure_ascii=False))")
     json.dump(sorted(cands), open('/tmp/c.json', 'w'), ensure_ascii=False)
     r = subprocess.run([sys.executable, '-c', code, '/tmp/c.json'], capture_output=True, text=True)
     return set(re.findall(r"missing in vocabulary: '([^']+)'", r.stderr + r.stdout))
@@ -19,6 +19,9 @@ for w in miss:
         parts.update([a, b])
         for f in ('s', 'n', 'en', 'es', 'e'):
             if a.endswith(f) and len(a) - len(f) >= 3: parts.add(a[:-len(f)])
+for w in miss:
+    for i in range(len(w)):
+        for j in range(i + 5, len(w) + 1): parts.add(w[i:j])
 parts -= known
 pmiss = missing(parts)
 pknown = (parts - pmiss) | known
@@ -40,6 +43,10 @@ res = {'known': sorted(known), 'split': {}, 'unsplittable': []}
 for w in sorted(miss):
     s = split(w)
     if s: res['split'][w] = s
-    else: res['unsplittable'].append(w)
+    else:
+        # wenigstens den längsten bekannten Teil (≥5 Buchstaben) mitnehmen, z. B. „gesellschaft“
+        best = max((w[i:j] for i in range(len(w)) for j in range(i + 5, len(w) + 1) if w[i:j] in pknown), key=len, default=None)
+        if best: res['split'][w] = [best]
+        else: res['unsplittable'].append(w)
 print(len(res['split']), 'zerlegt,', len(res['unsplittable']), 'nicht zerlegbar', flush=True)
 json.dump(res, open(OUT, 'w'), ensure_ascii=False, indent=0)
