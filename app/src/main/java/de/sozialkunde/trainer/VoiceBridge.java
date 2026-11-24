@@ -50,6 +50,7 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
     private volatile Model voskModel;
     private volatile String voskState = "loading"; // loading | ready | failed
     private SpeechService voskService;
+    private Recognizer voskRec; // gehört immer zu voskService; nur stopVosk() schließt ihn
 
     VoiceBridge(Activity act, WebView web) {
         this.act = act;
@@ -245,8 +246,10 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
         try {
             rec = new Recognizer(voskModel, 16000.0f, grammarJson);
             rec.setMaxAlternatives(3);
+            voskRec = rec;
             voskService = new SpeechService(rec, 16000.0f);
         } catch (Exception e) {
+            stopVosk();
             startListening(id); // Ersatz: Google-Erkennung
             return;
         }
@@ -259,7 +262,7 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
                 finished = true;
                 if (id.equals(activeListen)) activeListen = null;
                 // nicht im Callback selbst stoppen, sondern direkt danach
-                web.post(() -> { if (voskService == svc) stopVosk(); try { rec.close(); } catch (Exception ignored) { } });
+                web.post(() -> { if (voskService == svc) stopVosk(); });
                 call(fn, id, arg);
             }
             @Override public void onPartialResult(String hyp) {
@@ -291,9 +294,13 @@ public class VoiceBridge implements TextToSpeech.OnInitListener {
 
     private void stopVosk() {
         if (voskService != null) {
-            try { voskService.stop(); } catch (Exception ignored) { }
+            try { voskService.stop(); } catch (Exception ignored) { }      // wartet, bis der Aufnahme-Thread fertig ist
             try { voskService.shutdown(); } catch (Exception ignored) { }
             voskService = null;
+        }
+        if (voskRec != null) {
+            try { voskRec.close(); } catch (Exception ignored) { }
+            voskRec = null;
         }
     }
 

@@ -1,6 +1,6 @@
 /* Offline-Speicher: App-Dateien zwischenspeichern, damit der Trainer auch ohne Internet startet.
    Beim Veröffentlichen einer neuen Version die Versionsnummer erhöhen. */
-const VERSION = 'sozialkunde-v8';
+const VERSION = 'sozialkunde-v9';
 const FILES = ['./', './index.html', './fonts.css', './manifest.webmanifest',
   './icon-180.png', './icon-192.png', './icon-512.png',
   './fonts/doto-900.woff2', './fonts/hanken-400.woff2', './fonts/hanken-500.woff2', './fonts/hanken-700.woff2'];
