@@ -176,7 +176,7 @@ function drawSettings(step){
   <button class="set" id="thm" role="switch" aria-checked="${isDark()}"><span><b>Dunkelmodus</b><small>${theme?'Eigene Wahl':'Folgt gerade dem Handy'}</small></span><span class="sw"></span></button>
   <button class="set" id="vtg" role="switch" aria-checked="${vs.on}"><span><b>Sprachmodus</b><small>Frage und Antworten vorlesen, mit A bis E antworten</small></span><span class="sw"></span></button>
   ${canSpeak?'':'<p class="vhint">Sprachausgabe wird auf diesem Gerät nicht unterstützt.</p>'}${canSpeak&&!canListen?'<p class="vhint">Spracheingabe wird hier nicht unterstützt, nur Vorlesen.</p>':''}
-  <div class="setx"><span><b>Vorlesetempo</b></span><span class="seg" id="seg">${[[1,'Normal'],[1.25,'Schnell'],[1.5,'Sehr schnell']].map(([r,l])=>`<button data-r="${r}" aria-pressed="${vs.rate===r}">${l}</button>`).join('')}</span></div>
+  <div class="setx"><span><b>Vorlesetempo</b></span><span class="seg" id="seg">${RATES.map(([r,l])=>`<button data-r="${r}" aria-pressed="${vs.rate===r}">${l}</button>`).join('')}</span></div>
   <button class="set" id="vex" role="switch" aria-checked="${vs.expl}"><span><b>Erklärung vorlesen</b><small>Nach jeder Antwort auch das „Warum“ vorlesen</small></span><span class="sw"></span></button>
   ${step===0?`<button class="set warn" id="rst"><span>Gesamten Fortschritt löschen<small>${seen} von ${N} Fragen haben einen Lernstand</small></span></button>`:''}
   ${step===1?`<div class="conf"><b>Wirklich alles löschen?</b><p>Alle ${seen} geübten Fragen werden auf „offen“ zurückgesetzt.</p><div class="in"><button class="del" id="y1">Ja, weiter</button><button class="no" id="n1">Abbrechen</button></div></div>`:''}
@@ -191,8 +191,10 @@ function drawSettings(step){
   on('y2',()=>{st={};save();openB=-1;closeSettings();home();toast('Fortschritt gelöscht')});
 }
 // ---------- Sprachmodus: Vorlesen + mit A–E antworten ----------
-const VKEY='sk-voice';let vs={on:false,rate:1.25,expl:false};
+const VKEY='sk-voice';let vs={on:false,rate:1.6,expl:false};
+const RATES=[[1.2,'Normal'],[1.6,'Schnell'],[2,'Sehr schnell'],[2.5,'Turbo']];
 try{Object.assign(vs,JSON.parse(localStorage.getItem(VKEY))||{})}catch(e){}
+{const old={1:1.2,1.25:1.6,1.5:2};if(old[vs.rate])vs.rate=old[vs.rate];if(!RATES.some(r=>r[0]===vs.rate))vs.rate=1.6}
 const vsave=()=>{try{localStorage.setItem(VKEY,JSON.stringify(vs))}catch(e){}};
 const NA=window.AndroidVoice||null, SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const canSpeak=!!NA||('speechSynthesis' in window);
@@ -206,12 +208,14 @@ window.__voice={
 };
 let deV=null;const pickVoice=()=>{if(NA||!('speechSynthesis' in window))return;const v=speechSynthesis.getVoices().filter(x=>/^de/i.test(x.lang));deV=v.find(x=>x.localService&&/anna|petra|helena|markus|yannick/i.test(x.name))||v.find(x=>x.localService)||v[0]||null};
 if(!NA&&'speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
-function speak(text){return new Promise(res=>{
+// wait = geschätzte Zeit, bis dieser Satz in der Warteschlange dran ist (nur für den Notfall-Timeout im Browser)
+const est=text=>400+text.length*85/vs.rate;
+function speak(text,wait=0){return new Promise(res=>{
   if(NA){const id='s'+(++cbn);scb[id]=res;try{NA.speak(text,vs.rate,id)}catch(e){res()}return}
   if(!('speechSynthesis' in window))return res();
   const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=vs.rate;if(deV)u.voice=deV;
   let d=false;const fin=()=>{if(!d){d=true;res()}};u.onend=fin;u.onerror=fin;
-  setTimeout(fin,2500+text.length*110/vs.rate);speechSynthesis.speak(u);
+  setTimeout(fin,2500+wait+est(text));speechSynthesis.speak(u);
 })}
 function listen(){return new Promise(res=>{
   if(NA){const id='l'+(++cbn);lcb[id]=res;try{NA.listen(id)}catch(e){delete lcb[id];res(null)}return}
@@ -244,8 +248,11 @@ async function voiceAsk(){
   if(!run||run.done||!canSpeak)return;const my=++vToken;const i=run.list[run.pos],q=Q[i];
   const live=()=>my===vToken&&vs.on&&run&&!run.done;
   const btns=[...app.querySelectorAll('.a')];setVState('speak');
-  await speak(q.q);if(!live())return;
-  for(let k=0;k<btns.length;k++){btns[k].classList.add('rd');await speak('ABCDE'[k]+': '+q.a[+btns[k].dataset.j]);btns[k].classList.remove('rd');if(!live())return}
+  // Alles sofort in die Warteschlange: keine Pausen zwischen Frage und Antworten
+  const parts=[q.q,...btns.map((b,k)=>'ABCDE'[k]+': '+q.a[+b.dataset.j])];
+  let acc=0;const ps=parts.map(p=>{const pr=speak(p,acc);acc+=est(p);return pr});
+  await ps[0];if(!live())return;
+  for(let k=0;k<btns.length;k++){btns[k].classList.add('rd');await ps[k+1];btns[k].classList.remove('rd');if(!live())return}
   voiceListen(my,0);
 }
 async function voiceListen(my,tries){
@@ -263,9 +270,10 @@ async function voiceListen(my,tries){
 async function voiceFeedback(q,ok,last,next){
   const my=++vToken,btns=[...app.querySelectorAll('.a')],ci=btns.findIndex(b=>isRight(q,+b.dataset.j));
   setVState('speak');
-  await speak(ok?'Richtig.':'Falsch. Richtig ist '+'ABCDE'[ci]+': '+q.a[q.c]);if(my!==vToken)return;
-  if(vs.expl){await speak(q.e);if(my!==vToken)return}
-  setVState('');await sleep(600);if(my!==vToken||!vs.on)return;next();
+  const fbt=ok?'Richtig.':'Falsch. Richtig ist '+'ABCDE'[ci]+': '+q.a[q.c];
+  const p1=speak(fbt),p2=vs.expl?speak(q.e,est(fbt)):null;
+  await p1;if(my!==vToken)return;if(p2){await p2;if(my!==vToken)return}
+  setVState('');await sleep(150);if(my!==vToken||!vs.on)return;next();
 }
 function toggleVoice(){
   if(!canSpeak){toast('Sprachausgabe wird hier nicht unterstützt');return}
